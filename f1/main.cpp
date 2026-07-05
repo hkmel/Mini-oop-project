@@ -9,4 +9,5 @@ int main(int argc, char *argv[])
     w.show();
     return QApplication::exec();
     cout<<"hello"<<endl;
+    cout<<"brazil"<<endl;
 }
