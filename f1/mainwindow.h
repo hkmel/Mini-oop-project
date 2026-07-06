@@ -2,22 +2,25 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QStackedWidget>
+#include "startmenu.h"
+#include "maincanvas.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
-QT_END_NAMESPACE
-
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() override;
+    MainWindow(QWidget *parent=nullptr);
+    ~MainWindow();
+
+private slots:
+    void handleNewProject(const QString &pageSize);
+    void handleOpenProject();
 
 private:
-    Ui::MainWindow *ui;
+    QStackedWidget *stackedWidget;
+    StartMenu *startMenu;
+    MainCanvas *mainCanvas;
 };
-#endif // MAINWINDOW_H
+
+#endif
