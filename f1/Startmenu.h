@@ -8,12 +8,14 @@
 #include <QListWidget>
 #include <QLabel>
 #include <QComboBox>
+#include <QGroupBox>
 
-class StartMenu : public QWidget {
+class StartMenu : public QWidget
+{
     Q_OBJECT
 
 public:
-    explicit StartMenu(QWidget *parent=nullptr);
+    explicit StartMenu(QWidget *parent = nullptr);
     ~StartMenu();
 
 signals:
@@ -23,16 +25,25 @@ signals:
 
 private slots:
     void onNewProjectClicked();
+    void onThemeChanged(const QString &theme);
 
 private:
-    QLabel *titleLabel;
-    QPushButton *newProjectBtn;
-    QPushButton *openProjectBtn;
-    QComboBox *sizeComboBox;
-    QListWidget *recentProjectsList;
 
     void setupUI();
     void loadRecentProjects();
+    void applyDarkTheme();
+    void applyBlueTheme();
+
+    QLabel *titleLabel;
+
+    QPushButton *newProjectBtn;
+    QPushButton *openProjectBtn;
+
+    QListWidget *recentProjectsList;
+
+    QGroupBox *settingsGroup;
+    QLabel *themeLabel;
+    QComboBox *themeComboBox;
 };
 
-#endif
+#endif // STARTMENU_H
