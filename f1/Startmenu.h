@@ -46,4 +46,4 @@ private:
     QComboBox *themeComboBox;
 };
 
-#endif // STARTMENU_H
+#endif
