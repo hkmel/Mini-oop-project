@@ -1,255 +1,282 @@
-#include"maincanvas.h"
-#include"componentlibrary.h"
-#include"basecomponents.h"
-#include"pin.h"
-#include<QGraphicsItem>
-#include<QPainter>
-#include<QScrollBar>
-#include<QtMath>
-#include<QMenu>
-#include<QGraphicsSceneMouseEvent>
-#include<QInputDialog>
-#include<QMessageBox>
-class QGraphicsComponentItem:public QGraphicsItem{
+#include "maincanvas.h"
+#include "componentlibrary.h"
+#include "basecomponents.h"
+#include "pin.h"
+#include "wire.h"
+#include <QGraphicsItem>
+#include <QPainter>
+#include <QScrollBar>
+#include <QtMath>
+#include <QMenu>
+#include <QGraphicsSceneMouseEvent>
+#include <QInputDialog>
+#include <QMessageBox>
+
+// کلاس فرعی برای نمایش گرافیکی قطعات روی بوم
+class QGraphicsComponentItem : public QGraphicsItem {
 public:
-    Component*comp;
-    QGraphicsComponentItem(Component*c){
-        comp=c;
+    Component* comp;
+    QGraphicsComponentItem(Component* c) {
+        comp = c;
         setFlag(QGraphicsItem::ItemIsMovable);
         setFlag(QGraphicsItem::ItemIsSelectable);
         setFlag(QGraphicsItem::ItemSendsGeometryChanges);
         setPos(c->getPosition());
     }
-    QRectF boundingRect()const override{
-        return QRectF(-45,-45,90,90);
+    QRectF boundingRect() const override {
+        return QRectF(-45, -45, 90, 90);
     }
-    void paint(QPainter*painter,const QStyleOptionGraphicsItem*option,QWidget*widget)override{
-        Q_UNUSED(option);Q_UNUSED(widget);
-        if(isSelected()){
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override {
+        Q_UNUSED(option); Q_UNUSED(widget);
+        if (isSelected()) {
             painter->save();
-            painter->setPen(QPen(Qt::green,1,Qt::DashLine));
-            painter->drawRect(-35,-35,70,70);
+            painter->setPen(QPen(Qt::green, 1, Qt::DashLine));
+            painter->drawRect(-35, -35, 70, 70);
             painter->restore();
         }
         painter->save();
-        int angle=comp->getRotationAngle();
+        int angle = comp->getRotationAngle();
         painter->rotate(angle);
-        painter->setPen(QPen(Qt::white,2));
-        painter->setBrush(QBrush(QColor::fromRgb(35,35,35)));
-        QString name=comp->getName();
-        if(name=="Resistor"){
-            painter->drawLine(-30,0,-15,0);
-            painter->drawRect(-15,-7,30,14);
-            painter->drawLine(15,0,30,0);
-        }else if(name=="Capacitor"){
-            painter->drawLine(-30,0,-6,0);
-            painter->drawLine(-6,-15,-6,15);
-            painter->drawLine(6,-15,6,15);
-            painter->drawLine(6,0,30,0);
-        }else if(name=="Inductor"){
-            painter->drawLine(-30,0,-20,0);
-            painter->drawArc(-20,-8,10,16,0,180*16);
-            painter->drawArc(-10,-8,10,16,0,180*16);
-            painter->drawArc(0,-8,10,16,0,180*16);
-            painter->drawArc(10,-8,10,16,0,180*16);
-            painter->drawLine(20,0,30,0);
-        }else if(name=="GND"){
-            painter->drawLine(0,-10,0,10);
-            painter->drawLine(-15,10,15,10);
-            painter->drawLine(-10,15,10,15);
-            painter->drawLine(-5,20,5,20);
-        }else if(name=="VoltageSource"){
-            painter->drawEllipse(-15,-15,30,30);
-            painter->drawLine(0,-20,0,-15);
-            painter->drawLine(0,15,0,20);
-            painter->drawText(QRectF(-15,-12,30,12),Qt::AlignCenter,"+");
-            painter->drawText(QRectF(-15,0,30,12),Qt::AlignCenter,"-");
-        }else if(name=="Switch"){
-            painter->drawLine(-30,0,-15,0);
-            painter->drawEllipse(-15,-2,4,4);
-            painter->drawEllipse(11,-2,4,4);
-            SwitchComponent*sw=dynamic_cast<SwitchComponent*>(comp);
-            if(sw&&sw->isOpen())painter->drawLine(-13,0,10,-12);
-            else painter->drawLine(-13,0,11,0);
-            painter->drawLine(15,0,30,0);
-        }else if(name=="Button"){
-            painter->drawLine(-30,0,-15,0);
-            painter->drawEllipse(-15,-2,4,4);
-            painter->drawEllipse(11,-2,4,4);
-            ButtonComponent*btn=dynamic_cast<ButtonComponent*>(comp);
-            if(btn&&btn->isPressed())painter->drawLine(-13,0,11,0);
-            else painter->drawLine(-13,-6,11,-6);
-            painter->drawLine(-1,-6,-1,-12);
-            painter->drawLine(-8,-12,6,-12);
-            painter->drawLine(15,0,30,0);
-        }else if(name=="AND"){
-            painter->drawLine(-30,-10,-15,-10);
-            painter->drawLine(-30,10,-15,10);
+        painter->setPen(QPen(Qt::white, 2));
+        painter->setBrush(QBrush(QColor::fromRgb(35, 35, 35)));
+        QString name = comp->getName();
+        if (name == "Resistor") {
+            painter->drawLine(-30, 0, -15, 0);
+            painter->drawRect(-15, -7, 30, 14);
+            painter->drawLine(15, 0, 30, 0);
+        } else if (name == "Capacitor") {
+            painter->drawLine(-30, 0, -6, 0);
+            painter->drawLine(-6, -15, -6, 15);
+            painter->drawLine(6, -15, 6, 15);
+            painter->drawLine(6, 0, 30, 0);
+        } else if (name == "Inductor") {
+            painter->drawLine(-30, 0, -20, 0);
+            painter->drawArc(-20, -8, 10, 16, 0, 180 * 16);
+            painter->drawArc(-10, -8, 10, 16, 0, 180 * 16);
+            painter->drawArc(0, -8, 10, 16, 0, 180 * 16);
+            painter->drawArc(10, -8, 10, 16, 0, 180 * 16);
+            painter->drawLine(20, 0, 30, 0);
+        } else if (name == "GND") {
+            painter->drawLine(0, -10, 0, 10);
+            painter->drawLine(-15, 10, 15, 10);
+            painter->drawLine(-10, 15, 10, 15);
+            painter->drawLine(-5, 20, 5, 20);
+        } else if (name == "VoltageSource") {
+            painter->drawEllipse(-15, -15, 30, 30);
+            painter->drawLine(0, -20, 0, -15);
+            painter->drawLine(0, 15, 0, 20);
+            painter->drawText(QRectF(-15, -12, 30, 12), Qt::AlignCenter, "+");
+            painter->drawText(QRectF(-15, 0, 30, 12), Qt::AlignCenter, "-");
+        } else if (name == "Switch") {
+            painter->drawLine(-30, 0, -15, 0);
+            painter->drawEllipse(-15, -2, 4, 4);
+            painter->drawEllipse(11, -2, 4, 4);
+            SwitchComponent* sw = dynamic_cast<SwitchComponent*>(comp);
+            if (sw && sw->isOpen()) painter->drawLine(-13, 0, 10, -12);
+            else painter->drawLine(-13, 0, 11, 0);
+            painter->drawLine(15, 0, 30, 0);
+        } else if (name == "Button") {
+            painter->drawLine(-30, 0, -15, 0);
+            painter->drawEllipse(-15, -2, 4, 4);
+            painter->drawEllipse(11, -2, 4, 4);
+            ButtonComponent* btn = dynamic_cast<ButtonComponent*>(comp);
+            if (btn && btn->isPressed()) painter->drawLine(-13, 0, 11, 0);
+            else painter->drawLine(-13, -6, 11, -6);
+            painter->drawLine(-1, -6, -1, -12);
+            painter->drawLine(-8, -12, 6, -12);
+            painter->drawLine(15, 0, 30, 0);
+        } else if (name == "AND") {
+            painter->drawLine(-30, -10, -15, -10);
+            painter->drawLine(-30, 10, -15, 10);
             QPainterPath path;
-            path.moveTo(-15,-20);
-            path.lineTo(0,-20);
-            path.arcTo(-15,-20,40,40,90,-180);
-            path.lineTo(-15,20);
+            path.moveTo(-15, -20);
+            path.lineTo(0, -20);
+            path.arcTo(-15, -20, 40, 40, 90, -180);
+            path.lineTo(-15, 20);
             path.closeSubpath();
             painter->drawPath(path);
-            painter->drawLine(25,0,30,0);
-        }else if(name=="OR"){
-            painter->drawLine(-30,-10,-11,-10);
-            painter->drawLine(-30,10,-11,10);
+            painter->drawLine(25, 0, 30, 0);
+        } else if (name == "OR") {
+            painter->drawLine(-30, -10, -11, -10);
+            painter->drawLine(-30, 10, -11, 10);
             QPainterPath path;
-            path.moveTo(-15,-20);
-            path.arcTo(-25,-20,20,40,90,-180);
-            path.arcTo(-45,-20,70,40,90,-90);
-            path.arcTo(-45,-20,70,40,0,-90);
+            path.moveTo(-15, -20);
+            path.arcTo(-25, -20, 20, 40, 90, -180);
+            path.arcTo(-45, -20, 70, 40, 90, -90);
+            path.arcTo(-45, -20, 70, 40, 0, -90);
             path.closeSubpath();
             painter->drawPath(path);
-            painter->drawLine(25,0,30,0);
-        }else if(name=="NOT"){
-            painter->drawLine(-30,0,-15,0);
+            painter->drawLine(25, 0, 30, 0);
+        } else if (name == "NOT") {
+            painter->drawLine(-30, 0, -15, 0);
             QPainterPath path;
-            path.moveTo(-15,-15);
-            path.lineTo(10,0);
-            path.lineTo(-15,15);
+            path.moveTo(-15, -15);
+            path.lineTo(10, 0);
+            path.lineTo(-15, 15);
             path.closeSubpath();
             painter->drawPath(path);
-            painter->drawEllipse(10,-3,6,6);
-            painter->drawLine(16,0,30,0);
-        }else if(name=="NAND"){
-            painter->drawLine(-30,-10,-15,-10);
-            painter->drawLine(-30,10,-15,10);
+            painter->drawEllipse(10, -3, 6, 6);
+            painter->drawLine(16, 0, 30, 0);
+        } else if (name == "NAND") {
+            painter->drawLine(-30, -10, -15, -10);
+            painter->drawLine(-30, 10, -15, 10);
             QPainterPath path;
-            path.moveTo(-15,-20);
-            path.lineTo(0,-20);
-            path.arcTo(-15,-20,40,40,90,-180);
-            path.lineTo(-15,20);
+            path.moveTo(-15, -20);
+            path.lineTo(0, -20);
+            path.arcTo(-15, -20, 40, 40, 90, -180);
+            path.lineTo(-15, 20);
             path.closeSubpath();
             painter->drawPath(path);
-            painter->drawEllipse(25,-3,6,6);
-            painter->drawLine(31,0,35,0);
-        }else if(name=="XOR"){
-            painter->drawLine(-30,-10,-13,-10);
-            painter->drawLine(-30,10,-13,10);
+            painter->drawEllipse(25, -3, 6, 6);
+            painter->drawLine(31, 0, 35, 0);
+        } else if (name == "XOR") {
+            painter->drawLine(-30, -10, -13, -10);
+            painter->drawLine(-30, 10, -13, 10);
             QPainterPath path;
-            path.moveTo(-15,-20);
-            path.arcTo(-25,-20,20,40,90,-180);
-            path.arcTo(-45,-20,70,40,90,-90);
-            path.arcTo(-45,-20,70,40,0,-90);
+            path.moveTo(-15, -20);
+            path.arcTo(-25, -20, 20, 40, 90, -180);
+            path.arcTo(-45, -20, 70, 40, 90, -90);
+            path.arcTo(-45, -20, 70, 40, 0, -90);
             path.closeSubpath();
             painter->drawPath(path);
-            painter->drawArc(-29,-20,20,40,90,-180);
-            painter->drawLine(25,0,30,0);
-        }else if(name=="D Flip-Flop"){
-            painter->drawRect(-20,-25,40,50);
-            painter->drawLine(-20,-10,-30,-10);
-            painter->drawLine(-20,10,-30,10);
-            painter->drawLine(20,-10,30,-10);
-            painter->drawLine(20,10,30,10);
-            painter->drawText(QRectF(-18,-18,15,15),Qt::AlignCenter,"D");
-            painter->drawText(QRectF(-18,2,20,15),Qt::AlignCenter,"C");
-            painter->drawText(QRectF(2,-18,15,15),Qt::AlignCenter,"Q");
-            painter->drawText(QRectF(2,2,18,15),Qt::AlignCenter,"QB");
-        }else if(name=="LED"){
-            painter->drawLine(-30,0,-10,0);
+            painter->drawArc(-29, -20, 20, 40, 90, -180);
+            painter->drawLine(25, 0, 30, 0);
+        } else if (name == "D Flip-Flop") {
+            painter->drawRect(-20, -25, 40, 50);
+            painter->drawLine(-20, -10, -30, -10);
+            painter->drawLine(-20, 10, -30, 10);
+            painter->drawLine(20, -10, 30, -10);
+            painter->drawLine(20, 10, 30, 10);
+            painter->drawText(QRectF(-18, -18, 15, 15), Qt::AlignCenter, "D");
+            painter->drawText(QRectF(-18, 2, 20, 15), Qt::AlignCenter, "C");
+            painter->drawText(QRectF(2, -18, 15, 15), Qt::AlignCenter, "Q");
+            painter->drawText(QRectF(2, 2, 18, 15), Qt::AlignCenter, "QB");
+        } else if (name == "LED") {
+            painter->drawLine(-30, 0, -10, 0);
             QPainterPath path;
-            path.moveTo(-10,-12);
-            path.lineTo(10,0);
-            path.lineTo(-10,12);
+            path.moveTo(-10, -12);
+            path.lineTo(10, 0);
+            path.lineTo(-10, 12);
             path.closeSubpath();
             painter->drawPath(path);
-            painter->drawLine(10,-12,10,12);
-            painter->drawLine(10,0,30,0);
-            painter->drawLine(-3,-12,5,-20);
-            painter->drawLine(5,-20,2,-19);
-            painter->drawLine(5,-20,4,-17);
-        }else if(name=="7-Segment"){
-            painter->drawRect(-25,-35,50,70);
-        }else{
-            painter->drawRect(-30,-30,60,60);
-            painter->drawText(QRectF(-30,-25,60,20),Qt::AlignCenter,comp->getName());
+            painter->drawLine(10, -12, 10, 12);
+            painter->drawLine(10, 0, 30, 0);
+            painter->drawLine(-3, -12, 5, -20);
+            painter->drawLine(5, -20, 2, -19);
+            painter->drawLine(5, -20, 4, -17);
+        } else if (name == "7-Segment") {
+            painter->drawRect(-25, -35, 50, 70);
+        } else {
+            painter->drawRect(-30, -30, 60, 60);
+            painter->drawText(QRectF(-30, -25, 60, 20), Qt::AlignCenter, comp->getName());
         }
         painter->restore();
         painter->setPen(Qt::yellow);
-        painter->setFont(QFont("Arial",8));
-        painter->drawText(QRectF(-40,-45,80,15),Qt::AlignCenter,comp->getId());
-        for(Pin*pin:comp->getPins()){
-            QPointF p=pin->getOffset();
-            double rx=p.x();
-            double ry=p.y();
-            if(angle==90){rx=-p.y();ry=p.x();}
-            else if(angle==180){rx=-p.x();ry=-p.y();}
-            else if(angle==270){rx=p.y();ry=-p.x();}
-            QPointF rp(rx,ry);
-            painter->setPen(QPen(Qt::red,5));
+        painter->setFont(QFont("Arial", 8));
+        painter->drawText(QRectF(-40, -45, 80, 15), Qt::AlignCenter, comp->getId());
+
+        // رسم پین‌ها و هاور زنده با رنگ متمایز سبز
+        MainCanvas* canvas = dynamic_cast<MainCanvas*>(scene()->views().first());
+        for (Pin* pin : comp->getPins()) {
+            QPointF p = pin->getOffset();
+            double rx = p.x();
+            double ry = p.y();
+            if (angle == 90) { rx = -p.y(); ry = p.x(); }
+            else if (angle == 180) { rx = -p.x(); ry = -p.y(); }
+            else if (angle == 270) { rx = p.y(); ry = -p.x(); }
+            QPointF rp(rx, ry);
+
+            // هایلایت شدن پورت در صورت نزدیک شدن نشانگر موس
+            if (canvas && canvas->findPinAt(canvas->mapToScene(canvas->mapFromScene(pin->getGlobalPosition()))) == pin) {
+                painter->setPen(QPen(Qt::green, 7)); // هایلایت سبز پین فعال
+            } else {
+                painter->setPen(QPen(Qt::red, 5));  // پین عادی قرمز
+            }
             painter->drawPoint(rp);
-            painter->setPen(QPen(Qt::cyan,1));
-            painter->setFont(QFont("Arial",7));
-            if(rp.x()<0)painter->drawText(rp+QPointF(5,3),pin->getId());
-            else painter->drawText(rp+QPointF(-25,3),pin->getId());
+
+            painter->setPen(QPen(Qt::cyan, 1));
+            painter->setFont(QFont("Arial", 7));
+            if (rp.x() < 0) painter->drawText(rp + QPointF(5, 3), pin->getId());
+            else painter->drawText(rp + QPointF(-25, 3), pin->getId());
         }
     }
 protected:
-    QVariant itemChange(GraphicsItemChange change,const QVariant&value)override{
-        if(change==ItemPositionChange&&scene()){
-            QPointF newPos=value.toPointF();
-            qreal x=qRound(newPos.x()/20.0)*20.0;
-            qreal y=qRound(newPos.y()/20.0)*20.0;
-            comp->setPosition(QPointF(x,y));
-            return QPointF(x,y);
+    // جابه‌جایی پویا (Wire Dragging) هنگام حرکت دادن قطعات
+    QVariant itemChange(GraphicsItemChange change, const QVariant& value) override {
+        if (change == ItemPositionChange && scene()) {
+            QPointF newPos = value.toPointF();
+            qreal x = qRound(newPos.x() / 20.0) * 20.0;
+            qreal y = qRound(newPos.y() / 20.0) * 20.0;
+            comp->setPosition(QPointF(x, y));
+
+            MainCanvas* canvas = dynamic_cast<MainCanvas*>(scene()->views().first());
+            if (canvas) {
+                for (Wire* wire : canvas->getWires()) {
+                    if (wire->getStartPin()->getParentComponent() == comp ||
+                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == comp)) {
+                        wire->update(); // بروزرسانی گرافیکی سیم‌های متصل
+                    }
+                }
+            }
+            return QPointF(x, y);
         }
-        return QGraphicsItem::itemChange(change,value);
+        return QGraphicsItem::itemChange(change, value);
     }
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent*event)override{
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override {
         Q_UNUSED(event);
-        QString name=comp->getName();
-        if(name=="Resistor"){
-            ResistorComponent*r=dynamic_cast<ResistorComponent*>(comp);
-            if(r){
+        QString name = comp->getName();
+        if (name == "Resistor") {
+            ResistorComponent* r = dynamic_cast<ResistorComponent*>(comp);
+            if (r) {
                 bool ok;
-                double val=QInputDialog::getDouble(nullptr,"Edit Value","Resistance (Ohm):",r->getResistance(),0,1e9,2,&ok);
-                if(ok)r->setResistance(val);
+                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Resistance (Ohm):", r->getResistance(), 0, 1e9, 2, &ok);
+                if (ok) r->setResistance(val);
             }
-        }else if(name=="Capacitor"){
-            CapacitorComponent*c=dynamic_cast<CapacitorComponent*>(comp);
-            if(c){
+        } else if (name == "Capacitor") {
+            CapacitorComponent* c = dynamic_cast<CapacitorComponent*>(comp);
+            if (c) {
                 bool ok;
-                double val=QInputDialog::getDouble(nullptr,"Edit Value","Capacitance (F):",c->getCapacitance(),0,1e9,9,&ok);
-                if(ok)c->setCapacitance(val);
+                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Capacitance (F):", c->getCapacitance(), 0, 1e9, 9, &ok);
+                if (ok) c->setCapacitance(val);
             }
-        }else if(name=="Inductor"){
-            InductorComponent*l=dynamic_cast<InductorComponent*>(comp);
-            if(l){
+        } else if (name == "Inductor") {
+            InductorComponent* l = dynamic_cast<InductorComponent*>(comp);
+            if (l) {
                 bool ok;
-                double val=QInputDialog::getDouble(nullptr,"Edit Value","Inductance (H):",l->getInductance(),0,1e9,9,&ok);
-                if(ok)l->setInductance(val);
+                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Inductance (H):", l->getInductance(), 0, 1e9, 9, &ok);
+                if (ok) l->setInductance(val);
             }
-        }else if(name=="VoltageSource"){
-            VoltageSourceComponent*v=dynamic_cast<VoltageSourceComponent*>(comp);
-            if(v){
+        } else if (name == "VoltageSource") {
+            VoltageSourceComponent* v = dynamic_cast<VoltageSourceComponent*>(comp);
+            if (v) {
                 bool ok;
-                double val=QInputDialog::getDouble(nullptr,"Edit Value","Voltage (V):",v->getVoltage(),-1e9,1e9,2,&ok);
-                if(ok)v->setVoltage(val);
+                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Voltage (V):", v->getVoltage(), -1e9, 1e9, 2, &ok);
+                if (ok) v->setVoltage(val);
             }
-        }else if(name=="Switch"){
-            SwitchComponent*sw=dynamic_cast<SwitchComponent*>(comp);
-            if(sw){sw->toggle();update();}
-        }else if(name=="Button"){
-            ButtonComponent*btn=dynamic_cast<ButtonComponent*>(comp);
-            if(btn){
-                if(btn->isPressed())btn->release();
+        } else if (name == "Switch") {
+            SwitchComponent* sw = dynamic_cast<SwitchComponent*>(comp);
+            if (sw) { sw->toggle(); update(); }
+        } else if (name == "Button") {
+            ButtonComponent* btn = dynamic_cast<ButtonComponent*>(comp);
+            if (btn) {
+                if (btn->isPressed()) btn->release();
                 else btn->press();
                 update();
             }
         }
     }
 };
-MainCanvas::MainCanvas(QWidget*parent):QGraphicsView(parent){
-    scene=new QGraphicsScene(this);
+
+MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
+    scene = new QGraphicsScene(this);
     setScene(scene);
-    gridSize=20;
-    isPanning=false;
-    leftDragging=false;
-    currentZoom=1.0;
-    activeComponentType="";
+    gridSize = 20;
+    isPanning = false;
+    leftDragging = false;
+    currentZoom = 1.0;
+    activeComponentType = "";
+    activeWire = nullptr;
+    hoveredPin = nullptr;
     setRenderHint(QPainter::Antialiasing);
     setRenderHint(QPainter::SmoothPixmapTransform);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -257,116 +284,230 @@ MainCanvas::MainCanvas(QWidget*parent):QGraphicsView(parent){
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setMouseTracking(true);
-    setBackgroundBrush(QColor::fromRgb(0x15,0x15,0x15));
+    setBackgroundBrush(QColor::fromRgb(0x15, 0x15, 0x15));
     setCanvasSize("A4");
-    connect(scene,&QGraphicsScene::selectionChanged,this,[this](){
-        QList<QGraphicsItem*>selected=scene->selectedItems();
-        if(!selected.isEmpty()){
-            QGraphicsComponentItem*compItem=dynamic_cast<QGraphicsComponentItem*>(selected.first());
-            if(compItem)emit componentSelected(compItem->comp);
+    connect(scene, &QGraphicsScene::selectionChanged, this, [this]() {
+        QList<QGraphicsItem*> selected = scene->selectedItems();
+        if (!selected.isEmpty()) {
+            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(selected.first());
+            if (compItem) emit componentSelected(compItem->comp);
             else emit componentSelected(nullptr);
-        }else{
+        } else {
             emit componentSelected(nullptr);
         }
     });
 }
-MainCanvas::~MainCanvas(){}
-void MainCanvas::setCanvasSize(const QString&sizeStr){
-    if(sizeStr.contains("A3")){scene->setSceneRect(0,0,1600,1200);}
-    else if(sizeStr.contains("Custom")){scene->setSceneRect(0,0,1000,1000);}
-    else{scene->setSceneRect(0,0,1200,900);}
+
+MainCanvas::~MainCanvas() {}
+
+void MainCanvas::setCanvasSize(const QString& sizeStr) {
+    if (sizeStr.contains("A3")) { scene->setSceneRect(0, 0, 1600, 1200); }
+    else if (sizeStr.contains("Custom")) { scene->setSceneRect(0, 0, 1000, 1000); }
+    else { scene->setSceneRect(0, 0, 1200, 900); }
 }
-QPointF MainCanvas::snapToGrid(const QPointF&pos){
-    qreal x=qRound(pos.x()/gridSize)*gridSize;
-    qreal y=qRound(pos.y()/gridSize)*gridSize;
-    return QPointF(x,y);
+
+QPointF MainCanvas::snapToGrid(const QPointF& pos) {
+    qreal x = qRound(pos.x() / gridSize) * gridSize;
+    qreal y = qRound(pos.y() / gridSize) * gridSize;
+    return QPointF(x, y);
 }
-void MainCanvas::addComponent(const QString&type,const QPointF&pos){
-    QPointF snapped=snapToGrid(pos);
-    static int counter=1;
-    QString id=type.left(3).toUpper()+QString::number(counter++);
-    Component*comp=ComponentLibrary::getInstance().createComponent(type,id,snapped);
-    if(comp){
-        QGraphicsComponentItem*item=new QGraphicsComponentItem(comp);
+
+void MainCanvas::addComponent(const QString& type, const QPointF& pos) {
+    QPointF snapped = snapToGrid(pos);
+    static int counter = 1;
+    QString id = type.left(3).toUpper() + QString::number(counter++);
+    Component* comp = ComponentLibrary::getInstance().createComponent(type, id, snapped);
+    if (comp) {
+        QGraphicsComponentItem* item = new QGraphicsComponentItem(comp);
         scene->addItem(item);
     }
 }
-void MainCanvas::drawBackground(QPainter*painter,const QRectF&rect){
-    QGraphicsView::drawBackground(painter,rect);
+
+void MainCanvas::drawBackground(QPainter* painter, const QRectF& rect) {
+    QGraphicsView::drawBackground(painter, rect);
     painter->save();
-    int smallGrid=gridSize;
-    int bigGrid=gridSize*5;
-    painter->setPen(QPen(QColor::fromRgb(0x30,0x30,0x30),1));
-    int left=int(rect.left())-(int(rect.left())%smallGrid);
-    int top=int(rect.top())-(int(rect.top())%smallGrid);
-    int right=int(rect.right());
-    int bottom=int(rect.bottom());
-    for(int x=left;x<right;x+=smallGrid){
-        painter->drawLine(x,rect.top(),x,rect.bottom());
+    int smallGrid = gridSize;
+    int bigGrid = gridSize * 5;
+    painter->setPen(QPen(QColor::fromRgb(0x30, 0x30, 0x30), 1));
+    int left = int(rect.left()) - (int(rect.left()) % smallGrid);
+    int top = int(rect.top()) - (int(rect.top()) % smallGrid);
+    int right = int(rect.right());
+    int bottom = int(rect.bottom());
+    for (int x = left; x < right; x += smallGrid) {
+        painter->drawLine(x, rect.top(), x, rect.bottom());
     }
-    for(int y=top;y<bottom;y+=smallGrid){
-        painter->drawLine(rect.left(),y,rect.right(),y);
+    for (int y = top; y < bottom; y += smallGrid) {
+        painter->drawLine(rect.left(), y, rect.right(), y);
     }
-    painter->setPen(QPen(QColor::fromRgb(0x50,0x50,0x50),1.5));
-    int leftBig=int(rect.left())-(int(rect.left())%bigGrid);
-    int topBig=int(rect.top())-(int(rect.top())%bigGrid);
-    for(int x=leftBig;x<right;x+=bigGrid){
-        painter->drawLine(x,rect.top(),x,rect.bottom());
+    painter->setPen(QPen(QColor::fromRgb(0x50, 0x50, 0x50), 1.5));
+    int leftBig = int(rect.left()) - (int(rect.left()) % bigGrid);
+    int topBig = int(rect.top()) - (int(rect.top()) % bigGrid);
+    for (int x = leftBig; x < right; x += bigGrid) {
+        painter->drawLine(x, rect.top(), x, rect.bottom());
     }
-    for(int y=topBig;y<bottom;y+=bigGrid){
-        painter->drawLine(rect.left(),y,rect.right(),y);
+    for (int y = topBig; y < bottom; y += bigGrid) {
+        painter->drawLine(rect.left(), y, rect.right(), y);
     }
-    painter->setPen(QPen(QColor::fromRgb(0x00,0xff,0x88),2));
-    painter->drawLine(0,rect.top(),0,rect.bottom());
-    painter->drawLine(rect.left(),0,rect.right(),0);
+    painter->setPen(QPen(QColor::fromRgb(0x00, 0xff, 0x88), 2));
+    painter->drawLine(0, rect.top(), 0, rect.bottom());
+    painter->drawLine(rect.left(), 0, rect.right(), 0);
     painter->restore();
 }
-void MainCanvas::wheelEvent(QWheelEvent*event){
-    double factor=1.15;
-    if(event->angleDelta().y()>0){
-        if(currentZoom<3){
-            scale(factor,factor);
-            currentZoom*=factor;
+
+void MainCanvas::wheelEvent(QWheelEvent* event) {
+    double factor = 1.15;
+    if (event->angleDelta().y() > 0) {
+        if (currentZoom < 3) {
+            scale(factor, factor);
+            currentZoom *= factor;
         }
-    }else{
-        if(currentZoom>0.3){
-            scale(1/factor,1/factor);
-            currentZoom/=factor;
+    } else {
+        if (currentZoom > 0.3) {
+            scale(1 / factor, 1 / factor);
+            currentZoom /= factor;
         }
     }
     updateZoomValue();
 }
-void MainCanvas::mousePressEvent(QMouseEvent*event){
-    if(event->button()==Qt::MiddleButton||event->button()==Qt::RightButton){
-        isPanning=true;
-        lastMousePos=event->pos();
+
+// متد کاربردی جهت تشخیص قرار گرفتن موس در کادر یک پین با حساسیت ۱۰ پیکسل
+Pin* MainCanvas::findPinAt(const QPointF& scenePos) {
+    const qreal pinSensitivity = 10.0;
+    for (QGraphicsItem* item : scene->items()) {
+        QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+        if (compItem) {
+            for (Pin* pin : compItem->comp->getPins()) {
+                QPointF globalPos = pin->getGlobalPosition();
+                qreal dist = QLineF(scenePos, globalPos).length();
+                if (dist <= pinSensitivity) {
+                    return pin;
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
+// ۱. مدیریت فشردن دکمه موس (شروع سیم‌کشی، افزودن نقطه شکست، یا لغو سیم‌کشی با راست‌کلیک)
+void MainCanvas::mousePressEvent(QMouseEvent* event) {
+    QPointF scenePos = mapToScene(event->pos());
+    QPointF snappedPos = snapToGrid(scenePos);
+
+    // لغو فرآیند سیم‌کشی با فشردن راست‌کلیک در صورت فعال بودن سیم‌کشی
+    if (event->button() == Qt::RightButton && activeWire) {
+        scene->removeItem(activeWire);
+        delete activeWire;
+        activeWire = nullptr;
+        scene->update();
+        event->accept();
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton) {
+        Pin* clickedPin = findPinAt(scenePos);
+
+        // الف) شروع سیم‌کشی از پین مبدأ
+        if (!activeWire) {
+            if (clickedPin) {
+                activeWire = new Wire(clickedPin);
+                scene->addItem(activeWire);
+                activeWire->setTempEndPoint(clickedPin->getGlobalPosition());
+                event->accept();
+                return;
+            }
+        }
+        // ب) اگر فرآیند سیم‌کشی فعال است
+        else {
+            // اگر کاربر کلیک چپ را روی پین مقصد معتبر بزند -> سیم دائمی شود
+            if (clickedPin) {
+                if (clickedPin != activeWire->getStartPin() &&
+                    clickedPin->getParentComponent() != activeWire->getStartPin()->getParentComponent()) {
+                    activeWire->setEndPin(clickedPin);
+                    wires.append(activeWire);
+                    activeWire = nullptr; // آزادسازی سیم برای دفعات بعدی
+                }
+            }
+            // اگر کاربر روی نقطه خالی بوم کلیک کند -> ثبت نقطه شکست جهت خم شدن سیم
+            else {
+                activeWire->addWayPoint(snappedPos);
+            }
+            scene->update();
+            event->accept();
+            return;
+        }
+    }
+
+    // پنینگ بوم (جابه‌جایی صفحه با درگ راست‌کلیک یا دکمه وسط موس)
+    if (event->button() == Qt::MiddleButton || (event->button() == Qt::RightButton && !activeWire)) {
+        isPanning = true;
+        lastMousePos = event->pos();
         setCursor(Qt::ClosedHandCursor);
         event->accept();
         return;
     }
-    QPointF scenePos=mapToScene(event->pos());
-    QGraphicsItem*item=scene->itemAt(scenePos,transform());
-    if(event->button()==Qt::LeftButton&&!activeComponentType.isEmpty()&&!item){
-        addComponent(activeComponentType,scenePos);
+
+    // قرار دادن قطعه جدید (فقط در صورتی که سیم‌کشی فعال نباشد)
+    QGraphicsItem* item = scene->itemAt(scenePos, transform());
+    if (event->button() == Qt::LeftButton && !activeComponentType.isEmpty() && !item && !activeWire) {
+        addComponent(activeComponentType, scenePos);
         event->accept();
         return;
     }
+
     QGraphicsView::mousePressEvent(event);
 }
-void MainCanvas::mouseReleaseEvent(QMouseEvent*event){
-    if(event->button()==Qt::MiddleButton||event->button()==Qt::RightButton){
-        isPanning=false;
+
+// ۲. مدیریت حرکت موس (تعقیب زنده نشانگر توسط سیم در حال رسم و هایلایت پین‌ها)
+void MainCanvas::mouseMoveEvent(QMouseEvent* event) {
+    QPointF scenePos = mapToScene(event->pos());
+    emit mousePositionChanged(scenePos);
+
+    if (activeWire) {
+        Pin* targetPin = findPinAt(scenePos);
+        if (targetPin) {
+            activeWire->setTempEndPoint(targetPin->getGlobalPosition()); // آهنربا شدن موقت به پورت نزدیک
+        } else {
+            activeWire->setTempEndPoint(scenePos);
+        }
+        event->accept();
+        return;
+    }
+
+    if (isPanning) {
+        QPoint delta = lastMousePos - event->pos();
+        lastMousePos = event->pos();
+        horizontalScrollBar()->setValue(horizontalScrollBar()->value() + delta.x());
+        verticalScrollBar()->setValue(verticalScrollBar()->value() + delta.y());
+        event->accept();
+        return;
+    }
+
+    Pin* pinUnderMouse = findPinAt(scenePos);
+    if (pinUnderMouse != hoveredPin) {
+        hoveredPin = pinUnderMouse;
+        scene->update();
+    }
+
+    QGraphicsView::mouseMoveEvent(event);
+}
+
+// ۳. رها کردن دکمه موس (مدیریت انحصاری پایان پنینگ و منو)
+void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {
+    if (event->button() == Qt::MiddleButton || event->button() == Qt::RightButton) {
+        isPanning = false;
         setCursor(Qt::ArrowCursor);
-        if(event->button()==Qt::RightButton&&(event->pos()-lastMousePos).manhattanLength()<5){
+
+        // باز کردن منوی افزودن قطعات با راست‌کلیک معمولی
+        if (event->button() == Qt::RightButton && !activeWire && (event->pos() - lastMousePos).manhattanLength() < 5) {
             QMenu menu(this);
-            ComponentLibrary&lib=ComponentLibrary::getInstance();
-            for(const QString&cat:lib.getCategories()){
-                QMenu*subMenu=menu.addMenu(cat);
-                for(const QString&compType:lib.getComponentsInCategory(cat)){
-                    QAction*act=subMenu->addAction(compType);
-                    connect(act,&QAction::triggered,this,[this,compType,event](){
-                        QPointF scenePos=mapToScene(event->pos());
-                        addComponent(compType,scenePos);
+            ComponentLibrary& lib = ComponentLibrary::getInstance();
+            for (const QString& cat : lib.getCategories()) {
+                QMenu* subMenu = menu.addMenu(cat);
+                for (const QString& compType : lib.getComponentsInCategory(cat)) {
+                    QAction* act = subMenu->addAction(compType);
+                    connect(act, &QAction::triggered, this, [this, compType, event]() {
+                        QPointF scenePos = mapToScene(event->pos());
+                        addComponent(compType, scenePos);
                     });
                 }
             }
@@ -375,49 +516,60 @@ void MainCanvas::mouseReleaseEvent(QMouseEvent*event){
         event->accept();
         return;
     }
+
     QGraphicsView::mouseReleaseEvent(event);
 }
-void MainCanvas::mouseMoveEvent(QMouseEvent*event){
-    QPointF scenePos=mapToScene(event->pos());
-    emit mousePositionChanged(scenePos);
-    if(isPanning){
-        QPoint delta=lastMousePos-event->pos();
-        lastMousePos=event->pos();
-        horizontalScrollBar()->setValue(horizontalScrollBar()->value()+delta.x());
-        verticalScrollBar()->setValue(verticalScrollBar()->value()+delta.y());
-        event->accept();
-        return;
-    }
-    QGraphicsView::mouseMoveEvent(event);
-}
-void MainCanvas::keyPressEvent(QKeyEvent*event){
-    if(event->key()==Qt::Key_R){
-        bool rotatedAny=false;
-        for(QGraphicsItem*item:scene->selectedItems()){
-            QGraphicsComponentItem*compItem=dynamic_cast<QGraphicsComponentItem*>(item);
-            if(compItem){
+
+void MainCanvas::keyPressEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_R) {
+        bool rotatedAny = false;
+        for (QGraphicsItem* item : scene->selectedItems()) {
+            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+            if (compItem) {
                 compItem->comp->rotateClockwise();
                 compItem->update();
-                rotatedAny=true;
+
+                // تراز و رندر مجدد اتصالات متصل به قطعه پس از چرخش
+                for (Wire* wire : wires) {
+                    if (wire->getStartPin()->getParentComponent() == compItem->comp ||
+                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp)) {
+                        wire->update();
+                    }
+                }
+                rotatedAny = true;
             }
         }
-        if(!rotatedAny){
+        if (!rotatedAny) {
             resetTransform();
-            currentZoom=1.0;
+            currentZoom = 1.0;
             updateZoomValue();
         }
         event->accept();
         return;
     }
-    if(event->key()==Qt::Key_F){
+    if (event->key() == Qt::Key_F) {
         zoomToFit();
         event->accept();
         return;
     }
-    if(event->key()==Qt::Key_Delete){
-        for(QGraphicsItem*item:scene->selectedItems()){
-            QGraphicsComponentItem*compItem=dynamic_cast<QGraphicsComponentItem*>(item);
-            if(compItem){
+    if (event->key() == Qt::Key_Delete) {
+        for (QGraphicsItem* item : scene->selectedItems()) {
+            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+            if (compItem) {
+                // حذف تمام سیم‌های مرتبط به قطعه‌ی در حال حذف
+                QVector<Wire*> wiresToRemove;
+                for (Wire* wire : wires) {
+                    if (wire->getStartPin()->getParentComponent() == compItem->comp ||
+                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp)) {
+                        wiresToRemove.append(wire);
+                    }
+                }
+                for (Wire* w : wiresToRemove) {
+                    wires.removeAll(w);
+                    scene->removeItem(w);
+                    delete w;
+                }
+
                 scene->removeItem(compItem);
                 delete compItem->comp;
                 delete compItem;
@@ -428,14 +580,16 @@ void MainCanvas::keyPressEvent(QKeyEvent*event){
     }
     QGraphicsView::keyPressEvent(event);
 }
-qreal MainCanvas::getZoomLevel()const{return currentZoom;}
-void MainCanvas::updateZoomValue(){emit zoomChanged(int(currentZoom*100));}
-void MainCanvas::setActiveComponentType(const QString&type){activeComponentType=type;}
-void MainCanvas::zoomToFit(){
-    QRectF rect=scene->itemsBoundingRect();
-    if(rect.isEmpty())rect=scene->sceneRect();
-    rect.adjust(-50,-50,50,50);
-    fitInView(rect,Qt::KeepAspectRatio);
-    currentZoom=transform().m11();
+
+qreal MainCanvas::getZoomLevel() const { return currentZoom; }
+void MainCanvas::updateZoomValue() { emit zoomChanged(int(currentZoom * 100)); }
+void MainCanvas::setActiveComponentType(const QString& type) { activeComponentType = type; }
+
+void MainCanvas::zoomToFit() {
+    QRectF rect = scene->itemsBoundingRect();
+    if (rect.isEmpty()) rect = scene->sceneRect();
+    rect.adjust(-50, -50, 50, 50);
+    fitInView(rect, Qt::KeepAspectRatio);
+    currentZoom = transform().m11();
     updateZoomValue();
 }

@@ -9,14 +9,17 @@
 #include <QPointF>
 #include <QString>
 #include <QRubberBand>
+#include <QVector>
 
 class Component;
+class Wire;
+class Pin;
 
 class MainCanvas : public QGraphicsView {
     Q_OBJECT
 
 public:
-    explicit MainCanvas(QWidget* parent=nullptr);
+    explicit MainCanvas(QWidget* parent = nullptr);
     ~MainCanvas();
     void setCanvasSize(const QString& sizeStr);
     QPointF snapToGrid(const QPointF& pos);
@@ -24,6 +27,12 @@ public:
     void addComponent(const QString& type, const QPointF& pos);
     void setActiveComponentType(const QString& type);
     void zoomToFit();
+
+    // متد کمکی برای دسترسی به لیست سیم‌های رسم شده
+    QVector<Wire*> getWires() const { return wires; }
+
+    // متد کمکی برای پیدا کردن پین در مختصات خاص موس
+    Pin* findPinAt(const QPointF& scenePos);
 
 signals:
     void mousePositionChanged(const QPointF& pos);
@@ -49,7 +58,12 @@ private:
     QRubberBand* rubberBand;
     QPoint rubberOrigin;
 
+    // متغیرهای جدید برای مدیریت فرآیند سیم‌کشی
+    QVector<Wire*> wires;  // لیست کل سیم‌های مدار
+    Wire* activeWire;      // سیمی که همین الان کاربر در حال کشیدنش هست
+    Pin* hoveredPin;       // پینی که موس الان روش قرار داره (برای هایلایت سبز)
+
     void updateZoomValue();
 };
 
-#endif
+#endif // MAINCANVAS_H

@@ -8,24 +8,24 @@ CONFIG += c++17
 
 SOURCES += \
     Startmenu.cpp \
+    Wire.cpp \
     basecomponents.cpp \
     component.cpp \
     componentlibrary.cpp \
     main.cpp \
     maincanvas.cpp \
     mainwindow.cpp \
-    pin.cpp \
-    wire.cpp
+    pin.cpp
 
 HEADERS += \
     Startmenu.h \
+    Wire.h \
     basecomponents.h \
     component.h \
     componentlibrary.h \
     maincanvas.h \
     mainwindow.h \
-    pin.h \
-    wire.h
+    pin.h
 
 FORMS += \
     mainwindow.ui
