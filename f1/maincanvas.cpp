@@ -206,11 +206,14 @@ protected:
             qreal y = qRound(newPos.y() / 20.0) * 20.0;
             comp->setPosition(QPointF(x, y));
 
-            // فراخوانی متد کمکی بوم برای آپدیت اتصالات کل قطعات انتخاب شده
             MainCanvas* canvas = dynamic_cast<MainCanvas*>(scene()->views().first());
             if (canvas) {
-                // ریپید زنده بر اساس متد بهینه‌سازی شده پایین
-                QMetaObject::invokeMethod(canvas, "updateConnectedWiresForSelected", Qt::QueuedConnection);
+                for (Wire* wire : canvas->getWires()) {
+                    if (wire->getStartPin()->getParentComponent() == comp ||
+                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == comp)) {
+                        wire->update();
+                    }
+                }
             }
             return QPointF(x, y);
         }
@@ -266,6 +269,7 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     setScene(scene);
     gridSize = 20;
     isPanning = false;
+    leftDragging = false;
     currentZoom = 1.0;
     activeComponentType = "";
     activeWire = nullptr;
@@ -280,7 +284,7 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     setBackgroundBrush(QColor::fromRgb(0x15, 0x15, 0x15));
     setCanvasSize("A4");
 
-    // حالت درگ پیش‌فرض برای فعال‌سازی RubberBand (انتخاب مستطیلی چندتایی)
+    // فعال‌سازی پیش‌فرض قابلیت درگ مولتی‌سلکت روی بوم خالی
     setDragMode(QGraphicsView::RubberBandDrag);
 
     connect(scene, &QGraphicsScene::selectionChanged, this, [this]() {
@@ -317,6 +321,7 @@ void MainCanvas::addComponent(const QString& type, const QPointF& pos) {
     if (comp) {
         QGraphicsComponentItem* item = new QGraphicsComponentItem(comp);
         scene->addItem(item);
+        emit componentPlaced();
     }
 }
 
@@ -384,27 +389,9 @@ Pin* MainCanvas::findPinAt(const QPointF& scenePos) {
     return nullptr;
 }
 
-// متد کلیدی برای بروزرسانی سیم‌های متصل به گروه قطعات در حال جابه‌جایی
-void MainCanvas::updateConnectedWiresForSelected() {
-    for (Wire* wire : wires) {
-        bool startConnected = false;
-        bool endConnected = false;
-
-        for (QGraphicsItem* item : scene->selectedItems()) {
-            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
-            if (compItem) {
-                if (wire->getStartPin()->getParentComponent() == compItem->comp) startConnected = true;
-                if (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp) endConnected = true;
-            }
-        }
-        if (startConnected || endConnected) {
-            wire->update();
-        }
-    }
-}
-
 void MainCanvas::mousePressEvent(QMouseEvent* event) {
     QPointF scenePos = mapToScene(event->pos());
+    QPointF snappedPos = snapToGrid(scenePos);
 
     if (event->button() == Qt::RightButton && activeWire) {
         scene->removeItem(activeWire);
@@ -416,21 +403,8 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
     }
 
     if (event->button() == Qt::LeftButton) {
-        // الف) قرار دادن قطعه جدید از لیست فعال روی فضای خالی بوم
-        // الف) قرار دادن قطعه جدید از لیست فعال روی فضای خالی بوم
-        // الف) قرار دادن قطعه جدید از لیست فعال روی فضای خالی بوم
-        QGraphicsItem* item = scene->itemAt(scenePos, transform());
-        if (!activeComponentType.isEmpty() && !item && !activeWire) {
-            addComponent(activeComponentType, scenePos);
-
-            activeComponentType = "";
-            emit componentPlaced(); // 🌟 خط جدید: ارسال سیگنال به MainWindow
-
-            event->accept();
-            return;
-        }
-        // ب) مدیریت سیم‌کشی اتصالات
         Pin* clickedPin = findPinAt(scenePos);
+
         if (!activeWire) {
             if (clickedPin) {
                 activeWire = new Wire(clickedPin);
@@ -450,7 +424,6 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
                 }
             }
             else {
-                QPointF snappedPos = snapToGrid(scenePos);
                 activeWire->addWayPoint(snappedPos);
             }
             scene->update();
@@ -467,12 +440,15 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
         return;
     }
 
-    // تغییر مود درگ به حالت RubberBand فقط اگر روی آیتمی کلیک نشده باشد
-    QGraphicsItem* clickedItem = scene->itemAt(scenePos, transform());
-    if (event->button() == Qt::LeftButton && !clickedItem && activeComponentType.isEmpty() && !activeWire) {
-        setDragMode(QGraphicsView::RubberBandDrag);
-    } else if (event->button() == Qt::LeftButton && clickedItem) {
-        setDragMode(QGraphicsView::NoDrag); // اجازه بده فریم‌ورک جابه‌جایی المان‌ها رو انجام بده
+    QGraphicsItem* item = scene->itemAt(scenePos, transform());
+    if (event->button() == Qt::LeftButton && !activeComponentType.isEmpty() && !item && !activeWire) {
+        addComponent(activeComponentType, scenePos);
+
+        // اصلاحیه حیاتی: خروج خودکار از حالت قطعه‌گذاری پس از کلیک اول
+        setCurrentSelectedType("");
+
+        event->accept();
+        return;
     }
 
     QGraphicsView::mousePressEvent(event);
@@ -535,12 +511,58 @@ void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {
         return;
     }
 
-    // بعد از اتمام درگ مستطیلی، مود درگ را ریست کن تا المان‌ها مستقیماً قابل کلیک و تکان دادن باشند
-    setDragMode(QGraphicsView::RubberBandDrag);
     QGraphicsView::mouseReleaseEvent(event);
 }
 
 void MainCanvas::keyPressEvent(QKeyEvent* event) {
+    if (activeWire) {
+        if (event->key() == Qt::Key_Backspace || event->key() == Qt::Key_Escape) {
+            if (!activeWire->removeLastWayPoint()) {
+                scene->removeItem(activeWire);
+                delete activeWire;
+                activeWire = nullptr;
+            }
+            scene->update();
+            event->accept();
+            return;
+        }
+    }
+
+    if (event->key() == Qt::Key_Delete) {
+        QList<QGraphicsItem*> selected = scene->selectedItems();
+        for (QGraphicsItem* item : selected) {
+            Wire* wireItem = dynamic_cast<Wire*>(item);
+            if (wireItem) {
+                wires.removeAll(wireItem);
+                scene->removeItem(wireItem);
+                delete wireItem;
+                continue;
+            }
+
+            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+            if (compItem) {
+                QVector<Wire*> wiresToRemove;
+                for (Wire* wire : wires) {
+                    if (wire->getStartPin()->getParentComponent() == compItem->comp ||
+                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp)) {
+                        wiresToRemove.append(wire);
+                    }
+                }
+                for (Wire* w : wiresToRemove) {
+                    wires.removeAll(w);
+                    scene->removeItem(w);
+                    delete w;
+                }
+                scene->removeItem(compItem);
+                delete compItem->comp;
+                delete compItem;
+            }
+        }
+        scene->update();
+        event->accept();
+        return;
+    }
+
     if (event->key() == Qt::Key_R) {
         bool rotatedAny = false;
         for (QGraphicsItem* item : scene->selectedItems()) {
@@ -548,12 +570,17 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
             if (compItem) {
                 compItem->comp->rotateClockwise();
                 compItem->update();
+
+                for (Wire* wire : wires) {
+                    if (wire->getStartPin()->getParentComponent() == compItem->comp ||
+                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp)) {
+                        wire->update();
+                    }
+                }
                 rotatedAny = true;
             }
         }
-        if (rotatedAny) {
-            updateConnectedWiresForSelected();
-        } else {
+        if (!rotatedAny) {
             resetTransform();
             currentZoom = 1.0;
             updateZoomValue();
@@ -566,60 +593,21 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
         event->accept();
         return;
     }
-
-    // 🌟 قابلیت حذف چندتایی و پاک کردن سیم‌های متصل به سبک پروتئوس 🌟
-    if (event->key() == Qt::Key_Delete) {
-        QList<QGraphicsItem*> itemsToRemove = scene->selectedItems();
-        QVector<Wire*> wiresToRemove;
-
-        // مرحله اول: پیدا کردن تمام سیم‌هایی که به قطعات در حال حذف متصل هستند
-        for (QGraphicsItem* item : itemsToRemove) {
-            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
-            if (compItem) {
-                for (Wire* wire : wires) {
-                    if (wire->getStartPin()->getParentComponent() == compItem->comp ||
-                        (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp)) {
-                        if (!wiresToRemove.contains(wire)) {
-                            wiresToRemove.append(wire);
-                        }
-                    }
-                }
-            }
-        }
-
-        // مرحله دوم: حذف فیزیکی و امحای سیم‌های پیدا شده از حافظه و صحنه
-        for (Wire* w : wiresToRemove) {
-            wires.removeAll(w);
-            scene->removeItem(w);
-            delete w;
-        }
-
-        // مرحله سوم: حذف و امحای قطعات انتخاب شده
-        for (QGraphicsItem* item : itemsToRemove) {
-            QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
-            if (compItem) {
-                scene->removeItem(compItem);
-                delete compItem->comp;
-                delete compItem;
-            }
-        }
-
-        scene->clearSelection();
-        scene->update();
-        event->accept();
-        return;
-    }
     QGraphicsView::keyPressEvent(event);
 }
 
 qreal MainCanvas::getZoomLevel() const { return currentZoom; }
 void MainCanvas::updateZoomValue() { emit zoomChanged(int(currentZoom * 100)); }
 
+// مدیریت هوشمند فعال/غیرفعال کردن مولتی‌سلکتور بر اساس ابزار انتخابی
 void MainCanvas::setCurrentSelectedType(const QString& type) {
     activeComponentType = type;
+    if (type.isEmpty()) {
+        setDragMode(QGraphicsView::RubberBandDrag); // بوم خالی آماده مولتی‌سلکت درگ
+    } else {
+        setDragMode(QGraphicsView::NoDrag); // حین قطعه‌گذاری، درگ سلکتور غیرفعال شود تا کلیک کار کند
+    }
 }
-
-void MainCanvas::setActiveComponentType(const QString& type) { activeComponentType = type; }
 
 void MainCanvas::zoomToFit() {
     QRectF rect = scene->itemsBoundingRect();

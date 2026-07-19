@@ -2,10 +2,13 @@
 #include "pin.h"
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
+#include <QPainterPathStroker>
 
 Wire::Wire(Pin* startPin, QGraphicsItem* parent)
-    : QGraphicsObject(parent), startPin(startPin), endPin(nullptr), isTemp(true) {
-    setZValue(-1); // سیم‌ها پشت قطعات رسم شوند
+    : QGraphicsObject(parent), startPin(startPin), endPin(nullptr), isTemp(true), isHovered(false) {
+    setZValue(-1);
+    setFlag(QGraphicsItem::ItemIsSelectable, true); // فعال کردن قابلیت کلیک و انتخاب سیم
+    setAcceptHoverEvents(true); // فعال کردن حساسیت موس به هاور شدن روی سیم
 }
 
 void Wire::setEndPin(Pin* pin) {
@@ -24,29 +27,34 @@ void Wire::addWayPoint(const QPointF& pos) {
     update();
 }
 
+bool Wire::removeLastWayPoint() {
+    if (!wayPoints.isEmpty()) {
+        wayPoints.removeLast();
+        update();
+        return true; // نقطه شکست قبلی با موفقیت لغو شد
+    }
+    return false; // هیچ نقطه‌ای برای لغو وجود ندارد
+}
+
 QVector<QPointF> Wire::calculateRoute() const {
     QVector<QPointF> route;
     if (!startPin) return route;
 
-    // ۱. اضافه کردن نقطه شروع (پین مبدا)
     route.append(startPin->getGlobalPosition());
 
-    // ۲. اضافه کردن نقاط شکست واسط که کاربر قبلاً کلیک کرده است
     for (const QPointF& wp : wayPoints) {
         QPointF pPrev = route.last();
-        // ایجاد اتصال ۹۰ درجه بین نقطه قبلی و نقطه شکست جدید
         if (pPrev.x() != wp.x() && pPrev.y() != wp.y()) {
-            route.append(QPointF(wp.x(), pPrev.y())); // اول افقی، بعد عمودی
+            route.append(QPointF(wp.x(), pPrev.y()));
         }
         route.append(wp);
     }
 
-    // ۳. انتهای مسیر (یا پین مقصد یا موقعیت موقت موس)
     QPointF pLast = route.last();
     QPointF pEnd = (isTemp) ? tempEndPoint : (endPin ? endPin->getGlobalPosition() : pLast);
 
     if (pLast.x() != pEnd.x() && pLast.y() != pEnd.y()) {
-        route.append(QPointF(pEnd.x(), pLast.y())); // اتصال ۹۰ درجه تا نقطه نهایی
+        route.append(QPointF(pEnd.x(), pLast.y()));
     }
     route.append(pEnd);
 
@@ -69,6 +77,22 @@ QRectF Wire::boundingRect() const {
     return QRectF(minX - 5, minY - 5, (maxX - minX) + 10, (maxY - minY) + 10);
 }
 
+// ساخت حریم کلیک مجازی به ضخامت ۱۰ پیکسل به موازات سیم
+QPainterPath Wire::shape() const {
+    QPainterPath path;
+    QVector<QPointF> pts = calculateRoute();
+    if (pts.size() < 2) return path;
+
+    path.moveTo(pts[0]);
+    for (int i = 1; i < pts.size(); ++i) {
+        path.lineTo(pts[i]);
+    }
+
+    QPainterPathStroker stroker;
+    stroker.setWidth(10); // کاربر تا فاصله ۵ پیکسلی سیم هم کلیک کند، سیم انتخاب می‌شود
+    return stroker.createStroke(path);
+}
+
 void Wire::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option); Q_UNUSED(widget);
     QVector<QPointF> pts = calculateRoute();
@@ -77,14 +101,31 @@ void Wire::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
-    if (isTemp) {
-        painter->setPen(QPen(Qt::cyan, 2, Qt::DashLine)); // سیم موقت در حال رسم
+    // استایل‌های رنگی کاملاً شبیه پروتئوس
+    if (isSelected()) {
+        painter->setPen(QPen(Qt::red, 2, Qt::SolidLine)); // قرمز تند پروتئوسی هنگام کلیک و انتخاب
+    } else if (isHovered) {
+        painter->setPen(QPen(QColor(255, 120, 120), 2, Qt::SolidLine)); // هایلایت صورتی/قرمز ملایم هنگام عبور موس
+    } else if (isTemp) {
+        painter->setPen(QPen(Qt::cyan, 2, Qt::DashLine)); // حالت خط‌چین موقت در حال ترسیم
     } else {
-        painter->setPen(QPen(QColor(0, 180, 255), 2)); // سیم قطعی آبی‌رنگ
+        painter->setPen(QPen(QColor(0, 180, 255), 2)); // سیم‌کشی استاندارد آبی فیروزه‌ای خوش‌رنگ
     }
 
     for (int i = 0; i < pts.size() - 1; ++i) {
         painter->drawLine(pts[i], pts[i+1]);
     }
     painter->restore();
+}
+
+void Wire::hoverEnterEvent(QGraphicsSceneHoverEvent* event) {
+    isHovered = true;
+    update();
+    QGraphicsObject::hoverEnterEvent(event);
+}
+
+void Wire::hoverLeaveEvent(QGraphicsSceneHoverEvent* event) {
+    isHovered = false;
+    update();
+    QGraphicsObject::hoverLeaveEvent(event);
 }

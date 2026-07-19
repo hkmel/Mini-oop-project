@@ -4,14 +4,11 @@
 #include <QString>
 #include <QPointF>
 #include <QVector>
-
-class Pin;
+#include "pin.h" // اضافه شدن هدر پین برای شناختن PinState و PinDirection
 
 class Component {
 public:
     Component(const QString& id, const QString& name, const QPointF& pos);
-
-    // ۱. مخرب مجازی برای پاک کردن پین‌ها از حافظه و جلوگیری از Memory Leak
     virtual ~Component();
 
     QString getId() const;
@@ -22,15 +19,32 @@ public:
     void rotateClockwise();
     const QVector<Pin*>& getPins() const;
 
-    // ۲. اضافه شدن متد تعیین نوع قطعه برای هماهنگی با پنل قطعات فعال و بوم
     QString getType() const { return name; }
 
+    // 🌟 متد اصلی شبیه‌سازی که در کلاس گیت‌ها بازنویسی می‌شود
     virtual void updateState() = 0;
+
+    // 🌟 متدهای کمکی جدید برای ساده‌سازی دسترسی به وضعیت پین‌ها در گیت‌ها
+    PinState getPinStateById(const QString& pinId) const {
+        for (Pin* p : pins) {
+            if (p->getId() == pinId) return p->getState();
+        }
+        return PinState::Floating;
+    }
+
+    void setPinStateById(const QString& pinId, PinState newState) {
+        for (Pin* p : pins) {
+            if (p->getId() == pinId) {
+                p->setState(newState);
+                return;
+            }
+        }
+    }
 
 protected:
     void addPin(Pin* pin);
     QString id;
-    QString name; // نام یا نوع اصلی قطعه (مثلاً Resistor)
+    QString name;
     QPointF position;
     int rotationAngle;
     QVector<Pin*> pins;

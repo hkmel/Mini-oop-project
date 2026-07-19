@@ -5,8 +5,10 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-
-// #include "componentpreviewwidget.h" // چون فایل پیدا نمی‌شد، کامنت ماند
+#include <QToolBar>   // اضافه شده برای ساخت نوار ابزار همیشه روشن موسیقی
+#include <QComboBox>  // اضافه شده برای منوی کشویی آهنگ‌ها
+#include <QSlider>    // اضافه شده برای اسلایدر ولوم
+#include <QLabel>     // اضافه شده برای برچسب‌های متنی
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), activeComponent(nullptr)
@@ -36,19 +38,75 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
 
-    // راه‌اندازی سایدبار و نوار وضعیت
+    // 🎵 ۱. مقداردهی اولیه موتور صوتی برنامه (تنظیم ولوم اولیه روی ۷۰٪)
+    bgMusic = new QMediaPlayer(this);
+    audioOutput = new QAudioOutput(this);
+    bgMusic->setAudioOutput(audioOutput);
+    audioOutput->setVolume(0.70);
+    bgMusic->setLoops(QMediaPlayer::Infinite);
+
+    // 🎵 ۲. ساخت نوار ابزار اختصاصی موسیقی (همیشه از ابتدای برنامه بالای صفحه ظاهر می‌شود)
+    QToolBar* musicToolBar = new QToolBar(tr("پخش‌کننده لوفای"), this);
+    musicToolBar->setMovable(false); // ثابت کردن بار برای تمیزی ظاهر گرافیکی
+
+    // استایل‌دهی تیره و شیک به تولبار صوتی برای هماهنگی با عکس آنا و تم برنامه
+    musicToolBar->setStyleSheet(
+        "QToolBar { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1a1a1a, stop:1 #2b2b2b); border-bottom: 1px solid #333; padding: 4px; spacing: 12px; }"
+        "QLabel { color: #00ff88; font-weight: bold; font-family: 'Segoe UI'; font-size: 11px; }"
+        "QComboBox { background: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 3px 10px; min-width: 120px; }"
+        "QComboBox::drop-down { border: none; }"
+        "QSlider::groove:horizontal { height: 4px; background: #444; border-radius: 2px; }"
+        "QSlider::handle:horizontal { background: #00ff88; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }"
+        );
+    addToolBar(Qt::TopToolBarArea, musicToolBar);
+
+    // اضافه کردن المان‌های کنترل موزیک به تولبار پنجره اصلی
+    QLabel* lblSong = new QLabel(tr("🎵 قطعه موسیقی:"), this);
+    musicToolBar->addWidget(lblSong);
+
+    QComboBox* musicCombo = new QComboBox(this);
+    musicCombo->addItem("Voss", "voss");
+    musicCombo->addItem("Dream Odyssey", "dream_odyssey");
+    musicToolBar->addWidget(musicCombo);
+
+    musicToolBar->addSeparator();
+
+    QLabel* lblVol = new QLabel(tr("🔊 ولوم صدا:"), this);
+    musicToolBar->addWidget(lblVol);
+
+    QSlider* volumeSlider = new QSlider(Qt::Horizontal, this);
+    volumeSlider->setRange(0, 100);
+    volumeSlider->setValue(70);
+    volumeSlider->setFixedWidth(130);
+    musicToolBar->addWidget(volumeSlider);
+
+    // اتصالات سیگنال تولبار صوتی
+    connect(musicCombo, &QComboBox::activated, this, [this, musicCombo](int index) {
+        QString song = musicCombo->itemData(index).toString();
+        onMusicSelected(song);
+    });
+
+    connect(volumeSlider, &QSlider::valueChanged, this, [this](int value) {
+        if (audioOutput) {
+            audioOutput->setVolume(value / 100.0);
+        }
+    });
+
+    // راه‌اندازی سایدبار و نوار وضعیت قطعات
     initWorkspaceWidgets();
 
-    // 🌟 اعمال عکس بک‌گراند روی کل پنجره اصلی (جایگزین مسیر عکس خودت کن)
-    // شکل استاندارد و دقیق آدرس‌دهی ری‌سورس Qt در StyleSheet
-    // استفاده از border-image برای پر کردن کامل صفحه و حذف حاشیه‌ها
+    // 🌟 اعمال عکس بک‌گراند روی کل پنجره اصلی
     this->setStyleSheet(
         "MainWindow {"
         "   border-image: url(':/image/ANNA.jpg') 0 0 0 0 stretch stretch;"
         "   background-position: center;"
         "   background-attachment: fixed;"
         "}"
-        );}
+        );
+
+    // پخش فوری و اتوماتیک آهنگ Voss در پس‌زمینه به محض اجرای پروژه
+    onMusicSelected("voss");
+}
 
 MainWindow::~MainWindow() {}
 
@@ -70,7 +128,6 @@ void MainWindow::initWorkspaceWidgets()
     layout->addWidget(libraryTree);
     connect(libraryTree, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
 
-    // جایگزین موقت ویجت پیش‌نمایش برای جلوگیری از به هم ریختن ظاهر گرافیکی پنل
     previewWidgetPlaceholder = new QWidget(dockContents);
     previewWidgetPlaceholder->setMinimumSize(150, 20);
     layout->addWidget(previewWidgetPlaceholder);
@@ -94,7 +151,7 @@ void MainWindow::initWorkspaceWidgets()
     libraryDock->setWidget(dockContents);
     addDockWidget(Qt::LeftDockWidgetArea, libraryDock);
 
-    libraryDock->hide();
+    libraryDock->hide(); // این همان خطی است که کل سایدبار را اول کار مخفی می‌کرد!
 
     coordLabel = new QLabel(tr("مختصات: (0, 0)"), this);
     zoomLabel = new QLabel(tr("بزرگ نمایی: 100%"), this);
@@ -224,4 +281,20 @@ void MainWindow::onComponentSelected(Component* comp)
 void MainWindow::onPropertyValueChanged(QTableWidgetItem* item)
 {
     Q_UNUSED(item);
+}
+
+void MainWindow::onMusicSelected(const QString& songName) {
+    if (!bgMusic) return;
+
+    bgMusic->stop();
+
+    QString filePath;
+    if (songName == "voss") {
+        filePath = "qrc:/music/voss.mp3";
+    } else if (songName == "dream_odyssey") {
+        filePath = "qrc:/music/dream_odyssey.mp3";
+    }
+
+    bgMusic->setSource(QUrl(filePath));
+    bgMusic->play();
 }

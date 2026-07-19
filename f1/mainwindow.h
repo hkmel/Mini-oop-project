@@ -13,6 +13,8 @@
 #include <QListWidgetItem>
 #include "startmenu.h"
 #include "maincanvas.h"
+#include <QMediaPlayer>
+#include <QAudioOutput>
 
 class Component;
 // class ComponentPreviewWidget; // فعلاً کامنت شد
@@ -31,7 +33,7 @@ private slots:
     void onZoomChanged(int percentage);
     void onComponentSelected(Component* comp);
     void onPropertyValueChanged(QTableWidgetItem* item);
-
+    void onMusicSelected(const QString& songName); // اسلات مدیریت کلیک آهنگ‌ها
     void filterLibrary(const QString& text);
     void onTreeItemClicked(QTreeWidgetItem* item, int col);
     void onAddActiveClicked();
@@ -48,7 +50,8 @@ private:
     QDockWidget* libraryDock;
     QLineEdit* searchEdit;
     QTreeWidget* libraryTree;
-
+    QMediaPlayer* bgMusic = nullptr;     // پخش‌کننده صوتی
+    QAudioOutput* audioOutput = nullptr;
     // ComponentPreviewWidget* previewWidget; // فعلاً کامنت شد
     QWidget* previewWidgetPlaceholder; // جایگزین موقت برای چیدمان پنل
 

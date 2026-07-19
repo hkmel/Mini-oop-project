@@ -1,4 +1,5 @@
 QT += widgets
+QT += core gui widgets multimedia
 
 CONFIG += c++17
 
@@ -23,6 +24,7 @@ HEADERS += \
     basecomponents.h \
     component.h \
     componentlibrary.h \
+    gates.h \
     maincanvas.h \
     mainwindow.h \
     pin.h
@@ -36,4 +38,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 RESOURCES += \
-    image.qrc
+    image.qrc \
+    resources.qrc
+    resources.qrc
