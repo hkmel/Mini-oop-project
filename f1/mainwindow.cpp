@@ -5,15 +5,10 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QToolBar>   // اضافه شده برای ساخت نوار ابزار همیشه روشن موسیقی
-#include <QComboBox>  // اضافه شده برای منوی کشویی آهنگ‌ها
-#include <QSlider>    // اضافه شده برای اسلایدر ولوم
-#include <QLabel>     // اضافه شده برای برچسب‌های متنی
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), activeComponent(nullptr)
 {
-    // 🌟 تغییر عنوان پنجره به PROMETHEUS
     setWindowTitle(tr("PROMETHEUS - Circuit Simulator"));
 
     stackedWidget = new QStackedWidget(this);
@@ -29,87 +24,36 @@ MainWindow::MainWindow(QWidget* parent)
     connect(startMenu, &StartMenu::newProjectRequested, this, &MainWindow::handleNewProject);
     connect(startMenu, &StartMenu::openProjectRequested, this, &MainWindow::handleOpenProject);
 
+    // 🌟 اتصال سیگنال‌های موسیقی منوی استارت به موتور صوتی برنامه
+    connect(startMenu, &StartMenu::musicChanged, this, &MainWindow::onMusicSelected);
+    connect(startMenu, &StartMenu::volumeChanged, this, [this](int value) {
+        if (audioOutput) {
+            audioOutput->setVolume(value / 100.0);
+        }
+    });
+
     // اتصال سیگنال‌های بوم طراحی
     connect(mainCanvas, &MainCanvas::mouseMoved, this, &MainWindow::onMouseMoved);
     connect(mainCanvas, &MainCanvas::zoomChanged, this, &MainWindow::onZoomChanged);
     connect(mainCanvas, &MainCanvas::componentSelected, this, &MainWindow::onComponentSelected);
 
-    // دسلکت کردن لیست قطعات فعال به محض درج موفقیت‌آمیز یک قطعه روی بوم
     connect(mainCanvas, &MainCanvas::componentPlaced, this, [this]() {
         if (activeList) {
             activeList->clearSelection();
         }
     });
 
-    // 🎵 ۱. مقداردهی اولیه موتور صوتی برنامه (تنظیم ولوم اولیه روی ۷۰٪)
+    // 🎵 مقداردهی اولیه موتور صوتی (ولوم ۷۰٪)
     bgMusic = new QMediaPlayer(this);
     audioOutput = new QAudioOutput(this);
     bgMusic->setAudioOutput(audioOutput);
     audioOutput->setVolume(0.70);
     bgMusic->setLoops(QMediaPlayer::Infinite);
 
-    // 🎵 ۲. ساخت نوار ابزار اختصاصی موسیقی (همیشه از ابتدای برنامه بالای صفحه ظاهر می‌شود)
-    QToolBar* musicToolBar = new QToolBar(tr("پخش‌کننده لوفای"), this);
-    musicToolBar->setMovable(false); // ثابت کردن بار برای تمیزی ظاهر گرافیکی
-
-    // استایل‌دهی تیره و شیک به تولبار صوتی
-    musicToolBar->setStyleSheet(
-        "QToolBar { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1a1a1a, stop:1 #2b2b2b); border-bottom: 1px solid #333; padding: 4px; spacing: 12px; }"
-        "QLabel { color: #00ff88; font-weight: bold; font-family: 'Segoe UI'; font-size: 11px; }"
-        "QComboBox { background: #333; color: white; border: 1px solid #555; border-radius: 3px; padding: 3px 10px; min-width: 120px; }"
-        "QComboBox::drop-down { border: none; }"
-        "QSlider::groove:horizontal { height: 4px; background: #444; border-radius: 2px; }"
-        "QSlider::handle:horizontal { background: #00ff88; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }"
-        );
-    addToolBar(Qt::TopToolBarArea, musicToolBar);
-
-    // 🌟 ساخت یک ویجت کانتینر چیدمان برای چپ‌چین کردن قطعی آیتم‌های تولبار
-    QWidget* leftContainer = new QWidget(this);
-    QHBoxLayout* leftLayout = new QHBoxLayout(leftContainer);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->setSpacing(12);
-
-    QLabel* lblSong = new QLabel(tr("🎵 قطعه موسیقی:"), this);
-    leftLayout->addWidget(lblSong);
-
-    QComboBox* musicCombo = new QComboBox(this);
-    musicCombo->addItem("Voss", "voss");
-    musicCombo->addItem("Dream Odyssey", "dream_odyssey");
-    leftLayout->addWidget(musicCombo);
-
-    QLabel* lblVol = new QLabel(tr("🔊 ولوم صدا:"), this);
-    leftLayout->addWidget(lblVol);
-
-    QSlider* volumeSlider = new QSlider(Qt::Horizontal, this);
-    volumeSlider->setRange(0, 100);
-    volumeSlider->setValue(70);
-    volumeSlider->setFixedWidth(130);
-    leftLayout->addWidget(volumeSlider);
-
-    // افزودن کانتینر چپ‌چین شده به تولبار اصلی
-    musicToolBar->addWidget(leftContainer);
-
-    // ✨ ساخت فاصله مجازی متحرک در راست برای چپ‌چین نگه داشتن همیشگی المان‌ها
-    QWidget* rightSpacer = new QWidget(this);
-    rightSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    musicToolBar->addWidget(rightSpacer);
-
-    // اتصالات سیگنال تولبار صوتی
-    connect(musicCombo, &QComboBox::activated, this, [this, musicCombo](int index) {
-        QString song = musicCombo->itemData(index).toString();
-        onMusicSelected(song);
-    });
-
-    connect(volumeSlider, &QSlider::valueChanged, this, [this](int value) {
-        if (audioOutput) {
-            audioOutput->setVolume(value / 100.0);
-        }
-    });
-
     // راه‌اندازی سایدبار و نوار وضعیت قطعات
     initWorkspaceWidgets();
 
-    // 🌟 اعمال عکس بک‌گراند روی کل پنجره اصلی
+    // اعمال عکس بک‌گراند روی پنجره اصلی
     this->setStyleSheet(
         "MainWindow {"
         "   border-image: url(':/image/ANNA.jpg') 0 0 0 0 stretch stretch;"
@@ -118,7 +62,7 @@ MainWindow::MainWindow(QWidget* parent)
         "}"
         );
 
-    // پخش فوری و اتوماتیک آهنگ Voss در پس‌زمینه به محض اجرای پروژه
+    // پخش اولیه اتوماتیک ترک Voss
     onMusicSelected("voss");
 }
 
@@ -165,7 +109,7 @@ void MainWindow::initWorkspaceWidgets()
     libraryDock->setWidget(dockContents);
     addDockWidget(Qt::LeftDockWidgetArea, libraryDock);
 
-    libraryDock->hide(); // مخفی بودن سایدبار در ابتدا
+    libraryDock->hide();
 
     coordLabel = new QLabel(tr("مختصات: (0, 0)"), this);
     zoomLabel = new QLabel(tr("بزرگ نمایی: 100%"), this);

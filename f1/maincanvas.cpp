@@ -13,8 +13,12 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QHBoxLayout>
+#include <QVBoxLayout>
 #include <QPushButton>
 #include <QLabel>
+#include <QLineEdit>
+#include <QDialogButtonBox>
+#include <QDialog>
 #include <QResizeEvent>
 
 // کلاس فرعی برای نمایش گرافیکی قطعات روی بوم
@@ -106,31 +110,28 @@ public:
             double v = probe ? probe->getMeasuredVoltage() : 0.0;
             PinState st = probe ? probe->getMeasuredState() : PinState::Floating;
 
-            // کشیدن بدنه اصلی نمایشگر HUD پروب
             painter->setPen(QPen(QColor(0, 255, 136), 1.5));
-            painter->setBrush(QBrush(QColor(15, 23, 36, 230))); // شیشه دودی شفاف
+            painter->setBrush(QBrush(QColor(15, 23, 36, 230)));
             painter->drawRoundedRect(-35, -20, 70, 40, 6, 6);
 
-            // سنسور ورودی پروب
             painter->setPen(QPen(Qt::white, 2));
             painter->drawLine(-35, 0, -25, 0);
 
-            // متن ولتاژ دیجیتالی با رنگ نئونی
             QFont font("Consolas", 10, QFont::Bold);
             painter->setFont(font);
 
             if (st == PinState::High) {
-                painter->setPen(QColor(255, 45, 85)); // قرمز نئونی
+                painter->setPen(QColor(255, 45, 85));
                 painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
                 painter->setFont(QFont("Segoe UI", 7));
                 painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ HIGH ]");
             } else if (st == PinState::Low) {
-                painter->setPen(QColor(0, 210, 255)); // آبی نئونی
+                painter->setPen(QColor(0, 210, 255));
                 painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
                 painter->setFont(QFont("Segoe UI", 7));
                 painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ LOW ]");
             } else {
-                painter->setPen(QColor(241, 196, 15)); // زرد هشدار
+                painter->setPen(QColor(241, 196, 15));
                 painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, "?.? V");
                 painter->setFont(QFont("Segoe UI", 7));
                 painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ FLOAT ]");
@@ -210,8 +211,10 @@ public:
             painter->drawText(QRectF(-30, -25, 60, 20), Qt::AlignCenter, comp->getName());
         }
         painter->restore();
+
+        // نمایش نام/شناسه قطعه بالای آن
         painter->setPen(Qt::yellow);
-        painter->setFont(QFont("Arial", 8));
+        painter->setFont(QFont("Arial", 8, QFont::Bold));
         painter->drawText(QRectF(-40, -45, 80, 15), Qt::AlignCenter, comp->getId());
 
         MainCanvas* canvas = dynamic_cast<MainCanvas*>(scene()->views().first());
@@ -237,6 +240,7 @@ public:
             else painter->drawText(rp + QPointF(-25, 3), pin->getId());
         }
     }
+
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant& value) override {
         if (change == ItemPositionChange && scene()) {
@@ -258,47 +262,93 @@ protected:
         }
         return QGraphicsItem::itemChange(change, value);
     }
+
+    // 🌟 دیالوگ هوشمند دوبار کلیک برای ویرایش یکجای "نام/شناسه" و "مقدار" قطعه
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override {
         Q_UNUSED(event);
-        QString name = comp->getName();
-        if (name == "Resistor") {
-            ResistorComponent* r = dynamic_cast<ResistorComponent*>(comp);
-            if (r) {
+
+        // سوئیچ و کلیک تک‌لمسی دکمه‌ها
+        SwitchComponent* sw = dynamic_cast<SwitchComponent*>(comp);
+        if (sw) { sw->toggle(); update(); return; }
+        ButtonComponent* btn = dynamic_cast<ButtonComponent*>(comp);
+        if (btn) {
+            if (btn->isPressed()) btn->release();
+            else btn->press();
+            update();
+            return;
+        }
+
+        // ساخت دیالوگ سفارشی برای ویرایش مشخصات
+        QDialog dialog;
+        dialog.setWindowTitle("تنظیمات قطعه");
+        dialog.setMinimumWidth(300);
+
+        QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+        // ۱. ویرایش نام/شناسه قطعه
+        QLabel* lblId = new QLabel("شناسه / نام قطعه (Component ID):", &dialog);
+        QLineEdit* editId = new QLineEdit(comp->getId(), &dialog);
+        layout->addWidget(lblId);
+        layout->addWidget(editId);
+
+        // ۲. شناسایی نوع قطعه و آماده‌سازی فیلد ویرایش مقدار
+        ResistorComponent* r = dynamic_cast<ResistorComponent*>(comp);
+        CapacitorComponent* c = dynamic_cast<CapacitorComponent*>(comp);
+        InductorComponent* l = dynamic_cast<InductorComponent*>(comp);
+        VoltageSourceComponent* v = dynamic_cast<VoltageSourceComponent*>(comp);
+
+        QLabel* lblVal = nullptr;
+        QLineEdit* editVal = nullptr;
+        bool hasValueField = false;
+
+        if (r) {
+            hasValueField = true;
+            lblVal = new QLabel("مقاومت (Ohm):", &dialog);
+            editVal = new QLineEdit(QString::number(r->getResistance()), &dialog);
+        } else if (c) {
+            hasValueField = true;
+            lblVal = new QLabel("ظرفیت خازن (Farad):", &dialog);
+            editVal = new QLineEdit(QString::number(c->getCapacitance()), &dialog);
+        } else if (l) {
+            hasValueField = true;
+            lblVal = new QLabel("اندوکتانس سلف (Henry):", &dialog);
+            editVal = new QLineEdit(QString::number(l->getInductance()), &dialog);
+        } else if (v) {
+            hasValueField = true;
+            lblVal = new QLabel("ولتاژ منبع (Volt):", &dialog);
+            editVal = new QLineEdit(QString::number(v->getVoltage()), &dialog);
+        }
+
+        if (hasValueField) {
+            layout->addWidget(lblVal);
+            layout->addWidget(editVal);
+        }
+
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+        layout->addWidget(buttonBox);
+
+        QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            // اعمال نام/شناسه جدید
+            QString newIdStr = editId->text().trimmed();
+            if (!newIdStr.isEmpty()) {
+                comp->setId(newIdStr);
+            }
+
+            // اعمال مقدار جدید (در صورت وجود)
+            if (hasValueField) {
                 bool ok;
-                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Resistance (Ohm):", r->getResistance(), 0, 1e9, 2, &ok);
-                if (ok) r->setResistance(val);
+                double val = editVal->text().toDouble(&ok);
+                if (ok) {
+                    if (r) r->setResistance(val);
+                    else if (c) c->setCapacitance(val);
+                    else if (l) l->setInductance(val);
+                    else if (v) v->setVoltage(val);
+                }
             }
-        } else if (name == "Capacitor") {
-            CapacitorComponent* c = dynamic_cast<CapacitorComponent*>(comp);
-            if (c) {
-                bool ok;
-                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Capacitance (F):", c->getCapacitance(), 0, 1e9, 9, &ok);
-                if (ok) c->setCapacitance(val);
-            }
-        } else if (name == "Inductor") {
-            InductorComponent* l = dynamic_cast<InductorComponent*>(comp);
-            if (l) {
-                bool ok;
-                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Inductance (H):", l->getInductance(), 0, 1e9, 9, &ok);
-                if (ok) l->setInductance(val);
-            }
-        } else if (name == "VoltageSource") {
-            VoltageSourceComponent* v = dynamic_cast<VoltageSourceComponent*>(comp);
-            if (v) {
-                bool ok;
-                double val = QInputDialog::getDouble(nullptr, "Edit Value", "Voltage (V):", v->getVoltage(), -1e9, 1e9, 2, &ok);
-                if (ok) v->setVoltage(val);
-            }
-        } else if (name == "Switch") {
-            SwitchComponent* sw = dynamic_cast<SwitchComponent*>(comp);
-            if (sw) { sw->toggle(); update(); }
-        } else if (name == "Button") {
-            ButtonComponent* btn = dynamic_cast<ButtonComponent*>(comp);
-            if (btn) {
-                if (btn->isPressed()) btn->release();
-                else btn->press();
-                update();
-            }
+            update(); // بازرسم قطعه روی بوم
         }
     }
 };
@@ -324,7 +374,6 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     setBackgroundBrush(QColor::fromRgb(0x15, 0x15, 0x15));
     setCanvasSize("A4");
 
-    // فعال‌سازی پیش‌فرض قابلیت درگ مولتی‌سلکت روی بوم خالی
     setDragMode(QGraphicsView::RubberBandDrag);
 
     connect(scene, &QGraphicsScene::selectionChanged, this, [this]() {
@@ -341,9 +390,8 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     isSimulating = false;
     simulationTimer = new QTimer(this);
     connect(simulationTimer, &QTimer::timeout, this, &MainCanvas::runSimulationStep);
-    simulationTimer->start(80); // هر ۸۰ میلی‌ثانیه مدار اسکن می‌شود
+    simulationTimer->start(80);
 
-    // 🌟 ساخت پنل شناور دکمه‌های ران و پاز روی بوم
     createFloatingControlPanel();
 }
 
@@ -491,10 +539,7 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
     QGraphicsItem* item = scene->itemAt(scenePos, transform());
     if (event->button() == Qt::LeftButton && !activeComponentType.isEmpty() && !item && !activeWire) {
         addComponent(activeComponentType, scenePos);
-
-        // خروج خودکار از حالت قطعه‌گذاری پس از کلیک اول
         setCurrentSelectedType("");
-
         event->accept();
         return;
     }
@@ -562,6 +607,7 @@ void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {
     QGraphicsView::mouseReleaseEvent(event);
 }
 
+// 🌟 مدیریت کلیدهای کیبورد (پشتیبانی از کلید R و همچنین Ctrl + R برای چرخش)
 void MainCanvas::keyPressEvent(QKeyEvent* event) {
     if (activeWire) {
         if (event->key() == Qt::Key_Backspace || event->key() == Qt::Key_Escape) {
@@ -611,7 +657,8 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    if (event->key() == Qt::Key_R) {
+    // 🌟 چرخش 90 درجه با کلید R یا ترکیبی Ctrl + R
+    if (event->key() == Qt::Key_R || ((event->modifiers() & Qt::ControlModifier) && event->key() == Qt::Key_R)) {
         bool rotatedAny = false;
         for (QGraphicsItem* item : scene->selectedItems()) {
             QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
@@ -668,12 +715,10 @@ void MainCanvas::zoomToFit() {
 void MainCanvas::runSimulationStep() {
     if (!isSimulating) return;
 
-    // ۱. انتشار سیگنال درون تمام سیم‌ها
     for (Wire* wire : wires) {
         wire->propagateSignal();
     }
 
-    // ۲. آپدیت منطق تمام گیت‌ها و پروب‌ها
     for (QGraphicsItem* item : scene->items()) {
         QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
         if (compItem && compItem->comp) {
@@ -685,7 +730,6 @@ void MainCanvas::runSimulationStep() {
     scene->update();
 }
 
-// 🌟 ساخت ویجت شناور کنترل شبیه‌سازی روی بوم
 void MainCanvas::createFloatingControlPanel() {
     floatingControlPanel = new QWidget(this);
 
@@ -741,7 +785,6 @@ void MainCanvas::createFloatingControlPanel() {
     floatingControlPanel->adjustSize();
 }
 
-// 🌟 نگه داشتن پنل در گوشه بالا سمت راست بوم
 void MainCanvas::resizeEvent(QResizeEvent* event) {
     QGraphicsView::resizeEvent(event);
     if (floatingControlPanel) {

@@ -4,7 +4,7 @@
 #include <QString>
 #include <QPointF>
 #include <QVector>
-#include "pin.h" // اضافه شدن هدر پین برای شناختن PinState و PinDirection
+#include "pin.h"
 
 class Component {
 public:
@@ -12,6 +12,7 @@ public:
     virtual ~Component();
 
     QString getId() const;
+    void setId(const QString& newId) { id = newId; } // 🌟 متد جدید برای تغییر نام/شناسه قطعه
     QString getName() const;
     QPointF getPosition() const;
     void setPosition(const QPointF& pos);
@@ -21,10 +22,8 @@ public:
 
     QString getType() const { return name; }
 
-    // 🌟 متد اصلی شبیه‌سازی که در کلاس گیت‌ها بازنویسی می‌شود
     virtual void updateState() = 0;
 
-    // 🌟 متدهای کمکی جدید برای ساده‌سازی دسترسی به وضعیت پین‌ها در گیت‌ها
     PinState getPinStateById(const QString& pinId) const {
         for (Pin* p : pins) {
             if (p->getId() == pinId) return p->getState();
