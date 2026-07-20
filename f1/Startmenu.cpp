@@ -20,15 +20,16 @@ void StartMenu::setupUI()
     mainLayout->setContentsMargins(45, 50, 45, 50);
     mainLayout->setSpacing(25);
 
-    titleLabel = new QLabel("Welcome to Proteus Simulator", this);
-    titleLabel->setAlignment(Qt::AlignCenter);
+    // 🌟 تغییر عنوان و چپ‌چین کردن متن
+    titleLabel = new QLabel("Prometheus", this);
+    titleLabel->setAlignment(Qt::AlignLeft);
     titleLabel->setStyleSheet(
         "font-size: 32px;"
         "font-weight: bold;"
-        "color: #4CAF50;"
+        "color: #1b213C;"
         "background: transparent;"
         );
-    mainLayout->addWidget(titleLabel);
+    mainLayout->addWidget(titleLabel, 0, Qt::AlignLeft);
 
     QWidget *centerBox = new QWidget(this);
     centerBox->setObjectName("centerBox");
@@ -94,7 +95,8 @@ void StartMenu::setupUI()
 
     contentLayout->addLayout(rightLayout, 1);
 
-    mainLayout->addWidget(centerBox, 0, Qt::AlignCenter);
+    // 🌟 انتقال باکس اصلی پروژه‌ها به سمت چپ
+    mainLayout->addWidget(centerBox, 0, Qt::AlignLeft);
 
     settingsGroup = new QGroupBox("⚙ Settings", this);
     settingsGroup->setMaximumWidth(700);
@@ -114,7 +116,11 @@ void StartMenu::setupUI()
     settingsLayout->addWidget(themeComboBox);
     settingsLayout->addStretch();
 
-    mainLayout->addWidget(settingsGroup, 0, Qt::AlignCenter);
+    // 🌟 انتقال کادر تنظیمات به سمت چپ
+    mainLayout->addWidget(settingsGroup, 0, Qt::AlignLeft);
+
+    // 🌟 هل دادن آیتم‌ها به سمت بالا برای عدم کشیدگی vertical
+    mainLayout->addStretch();
 
     applyDarkTheme();
 }
@@ -201,7 +207,7 @@ void StartMenu::applyBlueTheme()
         "StartMenu { background: transparent; }"
         "QWidget#centerBox {"
         "   background: rgba(16, 42, 67, 220);"
-        "   border: 1px solid #39739D;"
+        "   border: 1px solid #34739D;"
         "   border-radius: 16px;"
         "   color: white;"
         "   font-family: Arial;"

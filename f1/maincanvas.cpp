@@ -3,6 +3,7 @@
 #include "basecomponents.h"
 #include "pin.h"
 #include "wire.h"
+#include "probe.h"
 #include <QGraphicsItem>
 #include <QPainter>
 #include <QScrollBar>
@@ -11,6 +12,10 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QResizeEvent>
 
 // کلاس فرعی برای نمایش گرافیکی قطعات روی بوم
 class QGraphicsComponentItem : public QGraphicsItem {
@@ -96,6 +101,40 @@ public:
             path.closeSubpath();
             painter->drawPath(path);
             painter->drawLine(25, 0, 30, 0);
+        } else if (name == "VoltageProbe") {
+            VoltageProbe* probe = dynamic_cast<VoltageProbe*>(comp);
+            double v = probe ? probe->getMeasuredVoltage() : 0.0;
+            PinState st = probe ? probe->getMeasuredState() : PinState::Floating;
+
+            // کشیدن بدنه اصلی نمایشگر HUD پروب
+            painter->setPen(QPen(QColor(0, 255, 136), 1.5));
+            painter->setBrush(QBrush(QColor(15, 23, 36, 230))); // شیشه دودی شفاف
+            painter->drawRoundedRect(-35, -20, 70, 40, 6, 6);
+
+            // سنسور ورودی پروب
+            painter->setPen(QPen(Qt::white, 2));
+            painter->drawLine(-35, 0, -25, 0);
+
+            // متن ولتاژ دیجیتالی با رنگ نئونی
+            QFont font("Consolas", 10, QFont::Bold);
+            painter->setFont(font);
+
+            if (st == PinState::High) {
+                painter->setPen(QColor(255, 45, 85)); // قرمز نئونی
+                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
+                painter->setFont(QFont("Segoe UI", 7));
+                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ HIGH ]");
+            } else if (st == PinState::Low) {
+                painter->setPen(QColor(0, 210, 255)); // آبی نئونی
+                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
+                painter->setFont(QFont("Segoe UI", 7));
+                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ LOW ]");
+            } else {
+                painter->setPen(QColor(241, 196, 15)); // زرد هشدار
+                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, "?.? V");
+                painter->setFont(QFont("Segoe UI", 7));
+                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ FLOAT ]");
+            }
         } else if (name == "OR") {
             painter->drawLine(-30, -10, -11, -10);
             painter->drawLine(-30, 10, -11, 10);
@@ -274,6 +313,7 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     activeComponentType = "";
     activeWire = nullptr;
     hoveredPin = nullptr;
+    floatingControlPanel = nullptr;
     setRenderHint(QPainter::Antialiasing);
     setRenderHint(QPainter::SmoothPixmapTransform);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -297,6 +337,14 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
             emit componentSelected(nullptr);
         }
     });
+
+    isSimulating = false;
+    simulationTimer = new QTimer(this);
+    connect(simulationTimer, &QTimer::timeout, this, &MainCanvas::runSimulationStep);
+    simulationTimer->start(80); // هر ۸۰ میلی‌ثانیه مدار اسکن می‌شود
+
+    // 🌟 ساخت پنل شناور دکمه‌های ران و پاز روی بوم
+    createFloatingControlPanel();
 }
 
 MainCanvas::~MainCanvas() {}
@@ -444,7 +492,7 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton && !activeComponentType.isEmpty() && !item && !activeWire) {
         addComponent(activeComponentType, scenePos);
 
-        // اصلاحیه حیاتی: خروج خودکار از حالت قطعه‌گذاری پس از کلیک اول
+        // خروج خودکار از حالت قطعه‌گذاری پس از کلیک اول
         setCurrentSelectedType("");
 
         event->accept();
@@ -599,13 +647,12 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
 qreal MainCanvas::getZoomLevel() const { return currentZoom; }
 void MainCanvas::updateZoomValue() { emit zoomChanged(int(currentZoom * 100)); }
 
-// مدیریت هوشمند فعال/غیرفعال کردن مولتی‌سلکتور بر اساس ابزار انتخابی
 void MainCanvas::setCurrentSelectedType(const QString& type) {
     activeComponentType = type;
     if (type.isEmpty()) {
-        setDragMode(QGraphicsView::RubberBandDrag); // بوم خالی آماده مولتی‌سلکت درگ
+        setDragMode(QGraphicsView::RubberBandDrag);
     } else {
-        setDragMode(QGraphicsView::NoDrag); // حین قطعه‌گذاری، درگ سلکتور غیرفعال شود تا کلیک کار کند
+        setDragMode(QGraphicsView::NoDrag);
     }
 }
 
@@ -616,4 +663,90 @@ void MainCanvas::zoomToFit() {
     fitInView(rect, Qt::KeepAspectRatio);
     currentZoom = transform().m11();
     updateZoomValue();
+}
+
+void MainCanvas::runSimulationStep() {
+    if (!isSimulating) return;
+
+    // ۱. انتشار سیگنال درون تمام سیم‌ها
+    for (Wire* wire : wires) {
+        wire->propagateSignal();
+    }
+
+    // ۲. آپدیت منطق تمام گیت‌ها و پروب‌ها
+    for (QGraphicsItem* item : scene->items()) {
+        QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+        if (compItem && compItem->comp) {
+            compItem->comp->updateState();
+            compItem->update();
+        }
+    }
+
+    scene->update();
+}
+
+// 🌟 ساخت ویجت شناور کنترل شبیه‌سازی روی بوم
+void MainCanvas::createFloatingControlPanel() {
+    floatingControlPanel = new QWidget(this);
+
+    floatingControlPanel->setStyleSheet(
+        "QWidget {"
+        "   background-color: rgba(18, 24, 38, 220);"
+        "   border: 1px solid #00ff88;"
+        "   border-radius: 8px;"
+        "}"
+        "QPushButton {"
+        "   background-color: #1e293b;"
+        "   color: #ffffff;"
+        "   border: 1px solid #334155;"
+        "   border-radius: 5px;"
+        "   padding: 5px 12px;"
+        "   font-weight: bold;"
+        "   font-size: 11px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #334155;"
+        "}"
+        );
+
+    QHBoxLayout* layout = new QHBoxLayout(floatingControlPanel);
+    layout->setContentsMargins(8, 6, 8, 6);
+    layout->setSpacing(8);
+
+    QLabel* lblStatus = new QLabel("STATUS: STOPPED", floatingControlPanel);
+    lblStatus->setStyleSheet("color: #ff3366; font-weight: bold; border: none; font-size: 10px;");
+
+    QPushButton* btnRun = new QPushButton("▶ RUN", floatingControlPanel);
+    btnRun->setStyleSheet("QPushButton { color: #00ff88; } QPushButton:hover { background: #054422; }");
+
+    QPushButton* btnPause = new QPushButton("⏸ PAUSE", floatingControlPanel);
+    btnPause->setStyleSheet("QPushButton { color: #ffcc00; } QPushButton:hover { background: #443300; }");
+
+    layout->addWidget(lblStatus);
+    layout->addWidget(btnRun);
+    layout->addWidget(btnPause);
+
+    connect(btnRun, &QPushButton::clicked, this, [this, lblStatus]() {
+        startSimulation();
+        lblStatus->setText("STATUS: RUNNING");
+        lblStatus->setStyleSheet("color: #00ff88; font-weight: bold; border: none; font-size: 10px;");
+    });
+
+    connect(btnPause, &QPushButton::clicked, this, [this, lblStatus]() {
+        pauseSimulation();
+        lblStatus->setText("STATUS: PAUSED");
+        lblStatus->setStyleSheet("color: #ffcc00; font-weight: bold; border: none; font-size: 10px;");
+    });
+
+    floatingControlPanel->adjustSize();
+}
+
+// 🌟 نگه داشتن پنل در گوشه بالا سمت راست بوم
+void MainCanvas::resizeEvent(QResizeEvent* event) {
+    QGraphicsView::resizeEvent(event);
+    if (floatingControlPanel) {
+        int x = width() - floatingControlPanel->width() - 20;
+        int y = 20;
+        floatingControlPanel->move(x, y);
+    }
 }

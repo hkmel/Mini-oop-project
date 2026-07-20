@@ -16,6 +16,7 @@ SOURCES += \
     main.cpp \
     maincanvas.cpp \
     mainwindow.cpp \
+    probe.h\
     pin.cpp
 
 HEADERS += \
@@ -27,7 +28,8 @@ HEADERS += \
     gates.h \
     maincanvas.h \
     mainwindow.h \
-    pin.h
+    pin.h \
+    probe.h
 
 FORMS += \
     mainwindow.ui

@@ -95,26 +95,38 @@ QPainterPath Wire::shape() const {
 
 void Wire::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option); Q_UNUSED(widget);
-    QVector<QPointF> pts = calculateRoute();
-    if (pts.size() < 2) return;
 
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // استایل‌های رنگی کاملاً شبیه پروتئوس
-    if (isSelected()) {
-        painter->setPen(QPen(Qt::red, 2, Qt::SolidLine)); // قرمز تند پروتئوسی هنگام کلیک و انتخاب
-    } else if (isHovered) {
-        painter->setPen(QPen(QColor(255, 120, 120), 2, Qt::SolidLine)); // هایلایت صورتی/قرمز ملایم هنگام عبور موس
-    } else if (isTemp) {
-        painter->setPen(QPen(Qt::cyan, 2, Qt::DashLine)); // حالت خط‌چین موقت در حال ترسیم
+    // ۱. تشخیص وضعیت ولتاژ سیم بر اساس پین‌ها
+    PinState state = PinState::Floating;
+    if (startPin) state = startPin->getState();
+    if (state == PinState::Floating && endPin) state = endPin->getState();
+
+    // ۲. اعمال رنگ‌بندی داینامیک نئونی (پروتئوس استایل)
+    QPen pen;
+    if (state == PinState::High) {
+        pen = QPen(QColor(255, 45, 85), 3); // قرمز نئونی برای ۵ ولت (HIGH)
+    } else if (state == PinState::Low) {
+        pen = QPen(QColor(0, 210, 255), 2.5); // آبی نئونی برای ۰ ولت (LOW)
     } else {
-        painter->setPen(QPen(QColor(0, 180, 255), 2)); // سیم‌کشی استاندارد آبی فیروزه‌ای خوش‌رنگ
+        pen = QPen(QColor(120, 120, 120), 2, Qt::DashLine); // خاکستری دش‌پوینت برای Floating
     }
 
-    for (int i = 0; i < pts.size() - 1; ++i) {
-        painter->drawLine(pts[i], pts[i+1]);
+    if (isHovered || isSelected()) {
+        pen.setWidthF(pen.widthF() + 1.5);
+        pen.setColor(QColor(255, 255, 0)); // زرد موقع هاور یا انتخاب
     }
+
+    painter->setPen(pen);
+
+    // ۳. رسم مسیر سیم
+    QVector<QPointF> route = calculateRoute();
+    for (int i = 0; i < route.size() - 1; ++i) {
+        painter->drawLine(route[i], route[i + 1]);
+    }
+
     painter->restore();
 }
 

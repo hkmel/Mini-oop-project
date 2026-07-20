@@ -10,6 +10,8 @@
 #include <QString>
 #include <QRubberBand>
 #include <QVector>
+#include <QResizeEvent>
+#include <QTimer> // 🌟 اضافه شده برای کنترل زمان‌بندی شبیه‌سازی
 
 class Component;
 class Wire;
@@ -41,6 +43,11 @@ public:
     QVector<Wire*> getWires() const { return wires; }
     Pin* findPinAt(const QPointF& scenePos);
 
+    // 🌟 متدهای کنترل حالت شبیه‌سازی مدار (Run / Pause)
+    void startSimulation() { isSimulating = true; }
+    void pauseSimulation() { isSimulating = false; }
+    bool getIsSimulating() const { return isSimulating; }
+
 protected:
     void wheelEvent(QWheelEvent* event) override;
     void drawBackground(QPainter* painter, const QRectF& rect) override;
@@ -48,6 +55,11 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override; // برای ثابت ماندن پنل در گوشه بوم
+
+private slots:
+    // 🌟 اسلات اصلی اجرای حلقه‌ی شبیه‌سازی در هر کلاک
+    void runSimulationStep();
 
 private:
     QGraphicsScene* scene;
@@ -59,10 +71,16 @@ private:
     QString activeComponentType;
     QRubberBand* rubberBand;
     QPoint rubberOrigin;
+    QWidget* floatingControlPanel; // پنل شناور دکمه‌ها
+    void createFloatingControlPanel();
 
     QVector<Wire*> wires;
     Wire* activeWire;
     Pin* hoveredPin;
+
+    // 🌟 متغیرهای مدیریت شبیه‌سازی و پروب‌ها
+    QTimer* simulationTimer;
+    bool isSimulating;
 
     void updateZoomValue();
 };

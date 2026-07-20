@@ -13,6 +13,9 @@
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), activeComponent(nullptr)
 {
+    // 🌟 تغییر عنوان پنجره به PROMETHEUS
+    setWindowTitle(tr("PROMETHEUS - Circuit Simulator"));
+
     stackedWidget = new QStackedWidget(this);
     setCentralWidget(stackedWidget);
 
@@ -49,7 +52,7 @@ MainWindow::MainWindow(QWidget* parent)
     QToolBar* musicToolBar = new QToolBar(tr("پخش‌کننده لوفای"), this);
     musicToolBar->setMovable(false); // ثابت کردن بار برای تمیزی ظاهر گرافیکی
 
-    // استایل‌دهی تیره و شیک به تولبار صوتی برای هماهنگی با عکس آنا و تم برنامه
+    // استایل‌دهی تیره و شیک به تولبار صوتی
     musicToolBar->setStyleSheet(
         "QToolBar { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1a1a1a, stop:1 #2b2b2b); border-bottom: 1px solid #333; padding: 4px; spacing: 12px; }"
         "QLabel { color: #00ff88; font-weight: bold; font-family: 'Segoe UI'; font-size: 11px; }"
@@ -60,25 +63,36 @@ MainWindow::MainWindow(QWidget* parent)
         );
     addToolBar(Qt::TopToolBarArea, musicToolBar);
 
-    // اضافه کردن المان‌های کنترل موزیک به تولبار پنجره اصلی
+    // 🌟 ساخت یک ویجت کانتینر چیدمان برای چپ‌چین کردن قطعی آیتم‌های تولبار
+    QWidget* leftContainer = new QWidget(this);
+    QHBoxLayout* leftLayout = new QHBoxLayout(leftContainer);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(12);
+
     QLabel* lblSong = new QLabel(tr("🎵 قطعه موسیقی:"), this);
-    musicToolBar->addWidget(lblSong);
+    leftLayout->addWidget(lblSong);
 
     QComboBox* musicCombo = new QComboBox(this);
     musicCombo->addItem("Voss", "voss");
     musicCombo->addItem("Dream Odyssey", "dream_odyssey");
-    musicToolBar->addWidget(musicCombo);
-
-    musicToolBar->addSeparator();
+    leftLayout->addWidget(musicCombo);
 
     QLabel* lblVol = new QLabel(tr("🔊 ولوم صدا:"), this);
-    musicToolBar->addWidget(lblVol);
+    leftLayout->addWidget(lblVol);
 
     QSlider* volumeSlider = new QSlider(Qt::Horizontal, this);
     volumeSlider->setRange(0, 100);
     volumeSlider->setValue(70);
     volumeSlider->setFixedWidth(130);
-    musicToolBar->addWidget(volumeSlider);
+    leftLayout->addWidget(volumeSlider);
+
+    // افزودن کانتینر چپ‌چین شده به تولبار اصلی
+    musicToolBar->addWidget(leftContainer);
+
+    // ✨ ساخت فاصله مجازی متحرک در راست برای چپ‌چین نگه داشتن همیشگی المان‌ها
+    QWidget* rightSpacer = new QWidget(this);
+    rightSpacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    musicToolBar->addWidget(rightSpacer);
 
     // اتصالات سیگنال تولبار صوتی
     connect(musicCombo, &QComboBox::activated, this, [this, musicCombo](int index) {
@@ -151,7 +165,7 @@ void MainWindow::initWorkspaceWidgets()
     libraryDock->setWidget(dockContents);
     addDockWidget(Qt::LeftDockWidgetArea, libraryDock);
 
-    libraryDock->hide(); // این همان خطی است که کل سایدبار را اول کار مخفی می‌کرد!
+    libraryDock->hide(); // مخفی بودن سایدبار در ابتدا
 
     coordLabel = new QLabel(tr("مختصات: (0, 0)"), this);
     zoomLabel = new QLabel(tr("بزرگ نمایی: 100%"), this);
