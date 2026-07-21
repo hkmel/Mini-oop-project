@@ -11,7 +11,8 @@
 #include <QRubberBand>
 #include <QVector>
 #include <QResizeEvent>
-#include <QTimer> // 🌟 اضافه شده برای کنترل زمان‌بندی شبیه‌سازی
+#include <QTimer>
+#include <QLabel>
 
 class Component;
 class Wire;
@@ -21,7 +22,6 @@ class MainCanvas : public QGraphicsView {
     Q_OBJECT
 
 signals:
-    // هماهنگ شده با MainWindow
     void mouseMoved(const QPointF& pos);
     void componentPlaced();
     void zoomChanged(int zoom);
@@ -35,17 +35,16 @@ public:
     qreal getZoomLevel() const;
     void addComponent(const QString& type, const QPointF& pos);
 
-    // هماهنگ شده با نام متد در MainWindow
     void setCurrentSelectedType(const QString& type);
-
     void zoomToFit();
 
     QVector<Wire*> getWires() const { return wires; }
     Pin* findPinAt(const QPointF& scenePos);
 
-    // 🌟 متدهای کنترل حالت شبیه‌سازی مدار (Run / Pause)
-    void startSimulation() { isSimulating = true; }
-    void pauseSimulation() { isSimulating = false; }
+    // متدهای کنترل شبیه‌سازی و تایمر
+    void startSimulation();
+    void pauseSimulation();
+    void stopSimulation();
     bool getIsSimulating() const { return isSimulating; }
 
 protected:
@@ -55,11 +54,11 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override; // برای ثابت ماندن پنل در گوشه بوم
+    void resizeEvent(QResizeEvent* event) override;
 
 private slots:
-    // 🌟 اسلات اصلی اجرای حلقه‌ی شبیه‌سازی در هر کلاک
     void runSimulationStep();
+    void updateClock();
 
 private:
     QGraphicsScene* scene;
@@ -71,16 +70,23 @@ private:
     QString activeComponentType;
     QRubberBand* rubberBand;
     QPoint rubberOrigin;
-    QWidget* floatingControlPanel; // پنل شناور دکمه‌ها
+
+    // پنل شناور و عناصر آن
+    QWidget* floatingControlPanel;
+    QLabel* lblSimStatus;
+    QLabel* lblTimerDisplay;
     void createFloatingControlPanel();
+    void updateTimerLabel();
 
     QVector<Wire*> wires;
     Wire* activeWire;
     Pin* hoveredPin;
 
-    // 🌟 متغیرهای مدیریت شبیه‌سازی و پروب‌ها
+    // مدیریت شبیه‌سازی و زمان
     QTimer* simulationTimer;
-    bool isSimulating;
+    QTimer* clockTimer;       // تایمر زمان شبیه‌سازی
+    int simElapsedTenths;     // شمارنده دهم ثانیه‌ها
+    bool isSimulating;        // 🌟 متغیر اعلان شده برای رفع خطا
 
     void updateZoomValue();
 };

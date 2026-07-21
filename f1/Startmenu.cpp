@@ -23,62 +23,75 @@ void StartMenu::setupUI()
     setMinimumSize(750, 650);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(45, 40, 45, 40);
-    mainLayout->setSpacing(20);
+    mainLayout->setContentsMargins(45, 35, 45, 35);
+    mainLayout->setSpacing(18);
 
-    // ۱. عنوان برنامه
-    titleLabel = new QLabel(" Prometheus", this);
+    // ۱. عنوان عنوان برنامه با هاله نئونی فیروزه‌ای
+    titleLabel = new QLabel("PROMETHEUS SIMULATOR", this);
     titleLabel->setAlignment(Qt::AlignLeft);
     titleLabel->setStyleSheet(
-        "font-size: 30px;"
-        "font-weight: bold;"
-        "color: #15EFE4;"
+        "font-size: 32px;"
+        "font-weight: 900;"
+        "color: #00f3ff;"
+        "letter-spacing: 2px;"
         "background: transparent;"
         );
     mainLayout->addWidget(titleLabel, 0, Qt::AlignLeft);
 
-    // ۲. کادر اصلی پروژه‌ها
+    // ۲. کادر اصلی پروژه‌ها (با استایل شیشه‌ای مات کهکشانی)
     QWidget *centerBox = new QWidget(this);
     centerBox->setObjectName("centerBox");
     centerBox->setMaximumWidth(700);
 
     QHBoxLayout *contentLayout = new QHBoxLayout(centerBox);
-    contentLayout->setContentsMargins(20, 20, 20, 20);
+    contentLayout->setContentsMargins(22, 22, 22, 22);
     contentLayout->setSpacing(25);
 
     QVBoxLayout *leftLayout = new QVBoxLayout();
     leftLayout->setSpacing(15);
 
-    QLabel *startTitle = new QLabel("Get Started", centerBox);
-    startTitle->setStyleSheet("font-size: 17px; font-weight: bold; background: transparent;");
+    QLabel *startTitle = new QLabel("⚡ Get Started", centerBox);
+    startTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #00f3ff; background: transparent;");
     leftLayout->addWidget(startTitle);
 
     newProjectBtn = new QPushButton("Create New Project", centerBox);
+    newProjectBtn->setCursor(Qt::PointingHandCursor);
     newProjectBtn->setMinimumHeight(45);
     newProjectBtn->setStyleSheet(
-        "QPushButton{"
-        "background: #4CAF50;"
-        "color: white;"
-        "border-radius: 8px;"
-        "font-size: 14px;"
-        "font-weight: bold;"
+        "QPushButton {"
+        "   background: linear-gradient(135deg, #0d6efd, #00d2ff);"
+        "   color: white;"
+        "   border: 1px solid #00f3ff;"
+        "   border-radius: 8px;"
+        "   font-size: 14px;"
+        "   font-weight: bold;"
         "}"
-        "QPushButton:hover{ background: #66BB6A; }"
+        "QPushButton:hover {"
+        "   background: linear-gradient(135deg, #00d2ff, #00ff88);"
+        "   color: #0d6efd;"
+        "   border: 1px solid #00ff88;"
+        "}"
         );
     connect(newProjectBtn, &QPushButton::clicked, this, &StartMenu::onNewProjectClicked);
     leftLayout->addWidget(newProjectBtn);
 
     openProjectBtn = new QPushButton("Open Existing Project", centerBox);
+    openProjectBtn->setCursor(Qt::PointingHandCursor);
     openProjectBtn->setMinimumHeight(45);
     openProjectBtn->setStyleSheet(
-        "QPushButton{"
-        "background: #0288D1;"
-        "color: white;"
-        "border-radius: 8px;"
-        "font-size: 14px;"
-        "font-weight: bold;"
+        "QPushButton {"
+        "   background: rgba(15, 23, 42, 180);"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.5);"
+        "   border-radius: 8px;"
+        "   font-size: 14px;"
+        "   font-weight: bold;"
         "}"
-        "QPushButton:hover{ background: #03A9F4; }"
+        "QPushButton:hover {"
+        "   background: rgba(0, 243, 255, 0.2);"
+        "   border: 1px solid #00f3ff;"
+        "   color: #ffffff;"
+        "}"
         );
     connect(openProjectBtn, &QPushButton::clicked, this, &StartMenu::openProjectRequested);
     leftLayout->addWidget(openProjectBtn);
@@ -87,8 +100,8 @@ void StartMenu::setupUI()
     contentLayout->addLayout(leftLayout, 1);
 
     QVBoxLayout *rightLayout = new QVBoxLayout();
-    QLabel *recentTitle = new QLabel("Recent Projects", centerBox);
-    recentTitle->setStyleSheet("font-size: 17px; font-weight: bold; background: transparent;");
+    QLabel *recentTitle = new QLabel("🕒 Recent Projects", centerBox);
+    recentTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #00f3ff; background: transparent;");
     rightLayout->addWidget(recentTitle);
 
     recentProjectsList = new QListWidget(centerBox);
@@ -105,11 +118,12 @@ void StartMenu::setupUI()
     QHBoxLayout *settingsLayout = new QHBoxLayout(settingsGroup);
     settingsLayout->setContentsMargins(15, 12, 15, 12);
 
-    themeLabel = new QLabel("Theme:", this);
-    themeLabel->setStyleSheet("font-size: 14px; font-weight: bold; background: transparent;");
+    themeLabel = new QLabel("Theme Profile:", this);
+    themeLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
 
+    // 🌟 تغییر نام گزینه‌های تم به Eclipse و Genesis
     themeComboBox = new QComboBox(this);
-    themeComboBox->addItems(QStringList() << "Dark Mode" << "Ocean Blue");
+    themeComboBox->addItems(QStringList() << "Eclipse" << "Genesis");
     themeComboBox->setMinimumWidth(160);
     themeComboBox->setMinimumHeight(32);
     connect(themeComboBox, &QComboBox::currentTextChanged, this, &StartMenu::onThemeChanged);
@@ -121,14 +135,14 @@ void StartMenu::setupUI()
 
     mainLayout->addWidget(settingsGroup, 0, Qt::AlignLeft);
 
-    // ۴. 🌟 کادر موزیک و ولوم (تنها کنترلهای فعال پخش صدا)
+    // ۴. 🌟 کادر موزیک و ولوم
     QGroupBox *musicGroup = new QGroupBox("🎵 Lofi Player & Audio Control", this);
     musicGroup->setMaximumWidth(700);
     QHBoxLayout *musicLayout = new QHBoxLayout(musicGroup);
     musicLayout->setContentsMargins(15, 12, 15, 12);
 
     QLabel *musicLabel = new QLabel("Track:", this);
-    musicLabel->setStyleSheet("font-size: 14px; font-weight: bold; background: transparent;");
+    musicLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
 
     QComboBox *startMusicCombo = new QComboBox(this);
     startMusicCombo->addItem("Voss", "voss");
@@ -137,7 +151,7 @@ void StartMenu::setupUI()
     startMusicCombo->setMinimumHeight(32);
 
     QLabel *volLabel = new QLabel("🔊 Volume:", this);
-    volLabel->setStyleSheet("font-size: 14px; font-weight: bold; background: transparent;");
+    volLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
 
     QSlider *startVolSlider = new QSlider(Qt::Horizontal, this);
     startVolSlider->setRange(0, 100);
@@ -151,7 +165,6 @@ void StartMenu::setupUI()
     musicLayout->addWidget(startVolSlider);
     musicLayout->addStretch();
 
-    // ارسال سیگنال‌ها به MainWindow
     connect(startMusicCombo, &QComboBox::activated, this, [this, startMusicCombo](int index) {
         emit musicChanged(startMusicCombo->itemData(index).toString());
     });
@@ -162,28 +175,28 @@ void StartMenu::setupUI()
 
     mainLayout->addWidget(musicGroup, 0, Qt::AlignLeft);
 
-    // ۵. 🌟 دکمه تعاملی درباره ما (About Us)
-    QGroupBox *aboutGroup = new QGroupBox("ℹ Information", this);
+    // ۵. 🌟 دکمه تعاملی درباره ما (Information)
+    QGroupBox *aboutGroup = new QGroupBox("ℹ System Info", this);
     aboutGroup->setMaximumWidth(700);
     QHBoxLayout *aboutLayout = new QHBoxLayout(aboutGroup);
     aboutLayout->setContentsMargins(15, 12, 15, 12);
 
-    QPushButton *btnAboutUs = new QPushButton("📖 About Us", this);
+    QPushButton *btnAboutUs = new QPushButton("📖 Developers Info", this);
     btnAboutUs->setCursor(Qt::PointingHandCursor);
-    btnAboutUs->setMinimumHeight(38);
+    btnAboutUs->setMinimumHeight(36);
     btnAboutUs->setStyleSheet(
         "QPushButton {"
-        "   background-color: #2c3e50;"
-        "   color: #00ff88;"
-        "   border: 1px solid #00ff88;"
+        "   background-color: rgba(0, 243, 255, 0.1);"
+        "   color: #00f3ff;"
+        "   border: 1px solid #00f3ff;"
         "   border-radius: 6px;"
         "   font-weight: bold;"
         "   font-size: 13px;"
         "   padding: 0 20px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: #00ff88;"
-        "   color: #121212;"
+        "   background-color: #00f3ff;"
+        "   color: #050b14;"
         "}"
         );
     connect(btnAboutUs, &QPushButton::clicked, this, &StartMenu::onAboutUsClicked);
@@ -234,25 +247,23 @@ void StartMenu::onNewProjectClicked()
     }
 }
 
-// 🌟 باز شدن کادر تعاملی درباره ما
 void StartMenu::onAboutUsClicked()
 {
     QDialog dialog(this);
-    dialog.setWindowTitle("About Us - Devalopers");
+    dialog.setWindowTitle("About Us - Developers");
     dialog.setMinimumWidth(380);
     dialog.setStyleSheet(
-        "QDialog { background-color: #1a1a1a; border: 1px solid #00ff88; border-radius: 10px; }"
-        "QLabel { color: #ffffff; font-size: 14px; font-family: 'Segoe UI'; }"
-        "QPushButton { background-color: #00ff88; color: #121212; font-weight: bold; border-radius: 5px; padding: 6px 15px; }"
-        "QPushButton:hover { background-color: #27ae60; color: white; }"
+        "QDialog { background-color: #0b0f19; border: 1px solid #00f3ff; border-radius: 12px; }"
+        "QLabel { color: #e2e8f0; font-size: 14px; font-family: 'Segoe UI'; }"
+        "QPushButton { background-color: #00f3ff; color: #0b0f19; font-weight: bold; border-radius: 6px; padding: 6px 18px; }"
+        "QPushButton:hover { background-color: #00ff88; color: #050b14; }"
         );
 
     QVBoxLayout layout(&dialog);
-    layout.setContentsMargins(20, 20, 20, 20);
+    layout.setContentsMargins(22, 22, 22, 22);
     layout.setSpacing(15);
 
-    // ✨ جایگاه قرارگیری اطلاعات شما
-    QLabel *lblText = new QLabel("Mahdi Zekri \n" "AmirAli HakimElahi\n" "EE DEP SUT - summer 2026", &dialog);
+    QLabel *lblText = new QLabel("Mahdi Zekri \nAmirAli HakimElahi\nEE DEP SUT - summer 2026", &dialog);
     lblText->setWordWrap(true);
     lblText->setAlignment(Qt::AlignCenter);
 
@@ -265,55 +276,72 @@ void StartMenu::onAboutUsClicked()
     dialog.exec();
 }
 
+// 🌟 به‌روزرسانی شرط تعویض تم براساس گزینه‌های Eclipse و Genesis
 void StartMenu::onThemeChanged(const QString &theme)
 {
-    if (theme == "Dark Mode") applyDarkTheme();
+    if (theme == "Eclipse") applyDarkTheme();
     else applyBlueTheme();
 }
 
+// 🌟 تم Eclipse (تاریک کهکشانی + پس‌زمینه ANNA.jpg)
 void StartMenu::applyDarkTheme()
 {
+    if (this->window()) {
+        this->window()->setStyleSheet(
+            "QMainWindow, #MainWindow {"
+            "   border-image: url(':/image/ANNA.jpg') 0 0 0 0 stretch stretch;"
+            "   background-position: center;"
+            "}"
+            );
+    }
+
     setStyleSheet(
         "StartMenu { background: transparent; }"
         "QWidget#centerBox {"
-        "   background: rgba(32, 33, 36, 220);"
-        "   border: 1px solid #444;"
-        "   border-radius: 14px;"
-        "   color: #eeeeee;"
+        "   background: rgba(8, 14, 28, 200);"
+        "   border: 1px solid rgba(0, 243, 255, 0.4);"
+        "   border-radius: 16px;"
+        "   color: #f1f5f9;"
         "}"
-        "QLabel { color: #eeeeee; }"
-        "QGroupBox{"
-        "   background: rgba(32, 33, 36, 220);"
-        "   border: 1px solid #555;"
+        "QLabel { color: #f1f5f9; }"
+        "QGroupBox {"
+        "   background: rgba(8, 14, 28, 190);"
+        "   border: 1px solid rgba(0, 243, 255, 0.3);"
         "   border-radius: 12px;"
-        "   color: #00ff88;"
+        "   color: #00f3ff;"
         "   font-weight: bold;"
         "   margin-top: 6px;"
         "}"
         "QGroupBox::title {"
         "   subcontrol-origin: margin;"
-        "   left: 10px;"
-        "   padding: 0 5px;"
+        "   left: 12px;"
+        "   padding: 0 6px;"
         "}"
-        "QListWidget{"
-        "   background: #151515;"
-        "   color: white;"
+        "QListWidget {"
+        "   background: rgba(5, 10, 20, 220);"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.2);"
         "   border-radius: 8px;"
         "   padding: 5px;"
         "}"
-        "QComboBox{"
-        "   background: #303134;"
-        "   color: white;"
+        "QListWidget::item:hover {"
+        "   background: rgba(0, 243, 255, 0.15);"
+        "   border-radius: 4px;"
+        "}"
+        "QComboBox {"
+        "   background: #0f172a;"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.4);"
         "   border-radius: 6px;"
         "   padding: 4px 8px;"
         "}"
         "QSlider::groove:horizontal {"
         "   height: 5px;"
-        "   background: #444;"
+        "   background: #1e293b;"
         "   border-radius: 2px;"
         "}"
         "QSlider::handle:horizontal {"
-        "   background: #00ff88;"
+        "   background: #00f3ff;"
         "   width: 14px;"
         "   height: 14px;"
         "   margin: -5px 0;"
@@ -322,49 +350,66 @@ void StartMenu::applyDarkTheme()
         );
 }
 
+// 🌟 تم Genesis (آبی-اقیانوسی + پس‌زمینه ANNA2.jpg)
+// 🌟 تم Genesis (هماهنگ‌شده با تم سنگی و نئون‌های طلایی ANNA2.jpg)
 void StartMenu::applyBlueTheme()
 {
+    if (this->window()) {
+        this->window()->setStyleSheet(
+            "QMainWindow, #MainWindow {"
+            "   border-image: url(':/image/ANNA2.jpg') 0 0 0 0 stretch stretch;"
+            "   background-position: center;"
+            "}"
+            );
+    }
+
     setStyleSheet(
         "StartMenu { background: transparent; }"
         "QWidget#centerBox {"
-        "   background: rgba(16, 42, 67, 220);"
-        "   border: 1px solid #39739D;"
-        "   border-radius: 14px;"
-        "   color: white;"
+        "   background: rgba(12, 16, 23, 215);"
+        "   border: 1px solid rgba(229, 169, 59, 0.5);"
+        "   border-radius: 16px;"
+        "   color: #ffffff;"
         "}"
-        "QLabel { color: white; }"
-        "QGroupBox{"
-        "   background: rgba(16, 42, 67, 220);"
-        "   border: 1px solid #39739D;"
+        "QLabel { color: #f0e2c6; }"
+        "QGroupBox {"
+        "   background: rgba(12, 16, 23, 195);"
+        "   border: 1px solid rgba(229, 169, 59, 0.35);"
         "   border-radius: 12px;"
-        "   color: #38ef7d;"
+        "   color: #e5a93b;"
         "   font-weight: bold;"
         "   margin-top: 6px;"
         "}"
         "QGroupBox::title {"
         "   subcontrol-origin: margin;"
-        "   left: 10px;"
-        "   padding: 0 5px;"
+        "   left: 12px;"
+        "   padding: 0 6px;"
         "}"
-        "QListWidget{"
-        "   background: #082032;"
-        "   color: white;"
+        "QListWidget {"
+        "   background: rgba(8, 11, 16, 230);"
+        "   color: #e5a93b;"
+        "   border: 1px solid rgba(229, 169, 59, 0.25);"
         "   border-radius: 8px;"
         "   padding: 5px;"
         "}"
-        "QComboBox{"
-        "   background: #163A5F;"
-        "   color: white;"
+        "QListWidget::item:hover {"
+        "   background: rgba(229, 169, 59, 0.15);"
+        "   border-radius: 4px;"
+        "}"
+        "QComboBox {"
+        "   background: #111620;"
+        "   color: #e5a93b;"
+        "   border: 1px solid rgba(229, 169, 59, 0.4);"
         "   border-radius: 6px;"
         "   padding: 4px 8px;"
         "}"
         "QSlider::groove:horizontal {"
         "   height: 5px;"
-        "   background: #112e4a;"
+        "   background: #18202c;"
         "   border-radius: 2px;"
         "}"
         "QSlider::handle:horizontal {"
-        "   background: #38ef7d;"
+        "   background: #e5a93b;"
         "   width: 14px;"
         "   height: 14px;"
         "   margin: -5px 0;"

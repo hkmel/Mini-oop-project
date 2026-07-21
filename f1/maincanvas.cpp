@@ -32,9 +32,11 @@ public:
         setFlag(QGraphicsItem::ItemSendsGeometryChanges);
         setPos(c->getPosition());
     }
+
     QRectF boundingRect() const override {
         return QRectF(-45, -45, 90, 90);
     }
+
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override {
         Q_UNUSED(option); Q_UNUSED(widget);
         if (isSelected()) {
@@ -49,6 +51,7 @@ public:
         painter->setPen(QPen(Qt::white, 2));
         painter->setBrush(QBrush(QColor::fromRgb(35, 35, 35)));
         QString name = comp->getName();
+
         if (name == "Resistor") {
             painter->drawLine(-30, 0, -15, 0);
             painter->drawRect(-15, -7, 30, 14);
@@ -263,11 +266,9 @@ protected:
         return QGraphicsItem::itemChange(change, value);
     }
 
-    // 🌟 دیالوگ هوشمند دوبار کلیک برای ویرایش یکجای "نام/شناسه" و "مقدار" قطعه
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override {
         Q_UNUSED(event);
 
-        // سوئیچ و کلیک تک‌لمسی دکمه‌ها
         SwitchComponent* sw = dynamic_cast<SwitchComponent*>(comp);
         if (sw) { sw->toggle(); update(); return; }
         ButtonComponent* btn = dynamic_cast<ButtonComponent*>(comp);
@@ -278,20 +279,17 @@ protected:
             return;
         }
 
-        // ساخت دیالوگ سفارشی برای ویرایش مشخصات
         QDialog dialog;
         dialog.setWindowTitle("تنظیمات قطعه");
         dialog.setMinimumWidth(300);
 
         QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
-        // ۱. ویرایش نام/شناسه قطعه
         QLabel* lblId = new QLabel("شناسه / نام قطعه (Component ID):", &dialog);
         QLineEdit* editId = new QLineEdit(comp->getId(), &dialog);
         layout->addWidget(lblId);
         layout->addWidget(editId);
 
-        // ۲. شناسایی نوع قطعه و آماده‌سازی فیلد ویرایش مقدار
         ResistorComponent* r = dynamic_cast<ResistorComponent*>(comp);
         CapacitorComponent* c = dynamic_cast<CapacitorComponent*>(comp);
         InductorComponent* l = dynamic_cast<InductorComponent*>(comp);
@@ -331,13 +329,11 @@ protected:
         QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
         if (dialog.exec() == QDialog::Accepted) {
-            // اعمال نام/شناسه جدید
             QString newIdStr = editId->text().trimmed();
             if (!newIdStr.isEmpty()) {
                 comp->setId(newIdStr);
             }
 
-            // اعمال مقدار جدید (در صورت وجود)
             if (hasValueField) {
                 bool ok;
                 double val = editVal->text().toDouble(&ok);
@@ -348,7 +344,7 @@ protected:
                     else if (v) v->setVoltage(val);
                 }
             }
-            update(); // بازرسم قطعه روی بوم
+            update();
         }
     }
 };
@@ -364,6 +360,9 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     activeWire = nullptr;
     hoveredPin = nullptr;
     floatingControlPanel = nullptr;
+    lblSimStatus = nullptr;
+    lblTimerDisplay = nullptr;
+
     setRenderHint(QPainter::Antialiasing);
     setRenderHint(QPainter::SmoothPixmapTransform);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -387,10 +386,15 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
         }
     });
 
+    // مدیریت شبیه‌سازی و زمان
     isSimulating = false;
+    simElapsedTenths = 0;
+
     simulationTimer = new QTimer(this);
     connect(simulationTimer, &QTimer::timeout, this, &MainCanvas::runSimulationStep);
-    simulationTimer->start(80);
+
+    clockTimer = new QTimer(this);
+    connect(clockTimer, &QTimer::timeout, this, &MainCanvas::updateClock);
 
     createFloatingControlPanel();
 }
@@ -607,7 +611,6 @@ void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {
     QGraphicsView::mouseReleaseEvent(event);
 }
 
-// 🌟 مدیریت کلیدهای کیبورد (پشتیبانی از کلید R و همچنین Ctrl + R برای چرخش)
 void MainCanvas::keyPressEvent(QKeyEvent* event) {
     if (activeWire) {
         if (event->key() == Qt::Key_Backspace || event->key() == Qt::Key_Escape) {
@@ -657,7 +660,6 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    // 🌟 چرخش 90 درجه با کلید R یا ترکیبی Ctrl + R
     if (event->key() == Qt::Key_R || ((event->modifiers() & Qt::ControlModifier) && event->key() == Qt::Key_R)) {
         bool rotatedAny = false;
         for (QGraphicsItem* item : scene->selectedItems()) {
@@ -712,6 +714,29 @@ void MainCanvas::zoomToFit() {
     updateZoomValue();
 }
 
+// متدهای متصل شده به کنترل‌های شبیه‌سازی و تایمر (دقت دهم ثانیه)
+void MainCanvas::startSimulation() {
+    isSimulating = true;
+    if (!simulationTimer->isActive()) {
+        simulationTimer->start(80);
+    }
+    if (!clockTimer->isActive()) {
+        clockTimer->start(100); // به‌روزرسانی هر 100 میلی‌ثانیه (0.1 ثانیه)
+    }
+}
+
+void MainCanvas::pauseSimulation() {
+    isSimulating = false;
+    simulationTimer->stop();
+    clockTimer->stop();
+}
+
+void MainCanvas::stopSimulation() {
+    pauseSimulation();
+    simElapsedTenths = 0;
+    updateTimerLabel();
+}
+
 void MainCanvas::runSimulationStep() {
     if (!isSimulating) return;
 
@@ -730,6 +755,32 @@ void MainCanvas::runSimulationStep() {
     scene->update();
 }
 
+void MainCanvas::updateClock() {
+    if (isSimulating) {
+        simElapsedTenths++;
+        updateTimerLabel();
+    }
+}
+
+void MainCanvas::updateTimerLabel() {
+    if (!lblTimerDisplay) return;
+
+    int totalSeconds = simElapsedTenths / 10;
+    int tenths = simElapsedTenths % 10;
+
+    int hours = totalSeconds / 3600;
+    int minutes = (totalSeconds % 3600) / 60;
+    int seconds = totalSeconds % 60;
+
+    QString timeText = QString("%1:%2:%3.%4")
+                           .arg(hours, 2, 10, QChar('0'))
+                           .arg(minutes, 2, 10, QChar('0'))
+                           .arg(seconds, 2, 10, QChar('0'))
+                           .arg(tenths);
+
+    lblTimerDisplay->setText(timeText);
+}
+
 void MainCanvas::createFloatingControlPanel() {
     floatingControlPanel = new QWidget(this);
 
@@ -744,7 +795,7 @@ void MainCanvas::createFloatingControlPanel() {
         "   color: #ffffff;"
         "   border: 1px solid #334155;"
         "   border-radius: 5px;"
-        "   padding: 5px 12px;"
+        "   padding: 5px 10px;"
         "   font-weight: bold;"
         "   font-size: 11px;"
         "}"
@@ -757,8 +808,11 @@ void MainCanvas::createFloatingControlPanel() {
     layout->setContentsMargins(8, 6, 8, 6);
     layout->setSpacing(8);
 
-    QLabel* lblStatus = new QLabel("STATUS: STOPPED", floatingControlPanel);
-    lblStatus->setStyleSheet("color: #ff3366; font-weight: bold; border: none; font-size: 10px;");
+    lblSimStatus = new QLabel("STATUS: STOPPED", floatingControlPanel);
+    lblSimStatus->setStyleSheet("color: #ff3366; font-weight: bold; border: none; font-size: 10px;");
+
+    lblTimerDisplay = new QLabel("00:00:00.0", floatingControlPanel);
+    lblTimerDisplay->setStyleSheet("color: #00d2ff; font-weight: bold; border: none; font-size: 11px; font-family: Consolas, monospace;");
 
     QPushButton* btnRun = new QPushButton("▶ RUN", floatingControlPanel);
     btnRun->setStyleSheet("QPushButton { color: #00ff88; } QPushButton:hover { background: #054422; }");
@@ -766,20 +820,31 @@ void MainCanvas::createFloatingControlPanel() {
     QPushButton* btnPause = new QPushButton("⏸ PAUSE", floatingControlPanel);
     btnPause->setStyleSheet("QPushButton { color: #ffcc00; } QPushButton:hover { background: #443300; }");
 
-    layout->addWidget(lblStatus);
+    QPushButton* btnStop = new QPushButton("⏹ STOP", floatingControlPanel);
+    btnStop->setStyleSheet("QPushButton { color: #ff3366; } QPushButton:hover { background: #440011; }");
+
+    layout->addWidget(lblSimStatus);
+    layout->addWidget(lblTimerDisplay);
     layout->addWidget(btnRun);
     layout->addWidget(btnPause);
+    layout->addWidget(btnStop);
 
-    connect(btnRun, &QPushButton::clicked, this, [this, lblStatus]() {
+    connect(btnRun, &QPushButton::clicked, this, [this]() {
         startSimulation();
-        lblStatus->setText("STATUS: RUNNING");
-        lblStatus->setStyleSheet("color: #00ff88; font-weight: bold; border: none; font-size: 10px;");
+        lblSimStatus->setText("STATUS: RUNNING");
+        lblSimStatus->setStyleSheet("color: #00ff88; font-weight: bold; border: none; font-size: 10px;");
     });
 
-    connect(btnPause, &QPushButton::clicked, this, [this, lblStatus]() {
+    connect(btnPause, &QPushButton::clicked, this, [this]() {
         pauseSimulation();
-        lblStatus->setText("STATUS: PAUSED");
-        lblStatus->setStyleSheet("color: #ffcc00; font-weight: bold; border: none; font-size: 10px;");
+        lblSimStatus->setText("STATUS: PAUSED");
+        lblSimStatus->setStyleSheet("color: #ffcc00; font-weight: bold; border: none; font-size: 10px;");
+    });
+
+    connect(btnStop, &QPushButton::clicked, this, [this]() {
+        stopSimulation();
+        lblSimStatus->setText("STATUS: STOPPED");
+        lblSimStatus->setStyleSheet("color: #ff3366; font-weight: bold; border: none; font-size: 10px;");
     });
 
     floatingControlPanel->adjustSize();
