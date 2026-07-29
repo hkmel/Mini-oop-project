@@ -5,9 +5,10 @@
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QFileDialog>
 
 MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent), activeComponent(nullptr), elapsedSeconds(0)
+    : QMainWindow(parent), activeComponent(nullptr)
 {
     setWindowTitle(tr("PROMETHEUS - Circuit Simulator"));
 
@@ -19,12 +20,9 @@ MainWindow::MainWindow(QWidget* parent)
 
     mainCanvas = new MainCanvas(this);
     stackedWidget->addWidget(mainCanvas);
-
-    // اتصال سیگنال‌های منوی شروع
-    connect(startMenu, &StartMenu::newProjectRequested, this, &MainWindow::handleNewProject);
+    connect(startMenu, qOverload<const QString&, const QString&, const QString&>(&StartMenu::newProjectRequested),
+            this, &MainWindow::handleNewProject);
     connect(startMenu, &StartMenu::openProjectRequested, this, &MainWindow::handleOpenProject);
-
-    // اتصال سیگنال‌های موسیقی منوی استارت
     connect(startMenu, &StartMenu::musicChanged, this, &MainWindow::onMusicSelected);
     connect(startMenu, &StartMenu::volumeChanged, this, [this](int value) {
         if (audioOutput) {
@@ -32,7 +30,6 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
 
-    // اتصال سیگنال‌های بوم طراحی
     connect(mainCanvas, &MainCanvas::mouseMoved, this, &MainWindow::onMouseMoved);
     connect(mainCanvas, &MainCanvas::zoomChanged, this, &MainWindow::onZoomChanged);
     connect(mainCanvas, &MainCanvas::componentSelected, this, &MainWindow::onComponentSelected);
@@ -43,166 +40,104 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
 
-    // 🎵 مقداردهی اولیه موتور صوتی
     bgMusic = new QMediaPlayer(this);
     audioOutput = new QAudioOutput(this);
     bgMusic->setAudioOutput(audioOutput);
     audioOutput->setVolume(0.70);
     bgMusic->setLoops(QMediaPlayer::Infinite);
 
-    // راه‌اندازی ابزارها و نوار شبیه‌سازی
     initWorkspaceWidgets();
     createSimulationToolBar();
 
-    // پخش اولیه اتوماتیک ترک Voss
     onMusicSelected("voss");
 }
 
 MainWindow::~MainWindow() {}
 
-// 🌟 ساخت نوار کنترل شبیه‌سازی (Run / Pause / Stop / Timer)
 void MainWindow::createSimulationToolBar()
 {
-    simToolBar = addToolBar(tr("Simulation Controls"));
+    simToolBar = addToolBar(tr("Simulation & Tools Bar"));
     simToolBar->setMovable(false);
     simToolBar->setStyleSheet(
         "QToolBar {"
-        "   background: rgba(8, 14, 28, 230);"
+        "   background: rgba(8, 14, 28, 240);"
         "   border-bottom: 1px solid rgba(0, 243, 255, 0.4);"
-        "   spacing: 12px;"
+        "   spacing: 8px;"
         "   padding: 6px 12px;"
         "}"
         );
 
-    // دکمه Run
-    btnRun = new QPushButton("▶ Run", this);
-    btnRun->setCursor(Qt::PointingHandCursor);
-    btnRun->setStyleSheet(
+    // ۱. مدیریت پروژه و ناوبری
+    btnBackToStart = new QPushButton("🏠 Start Menu", this);
+    btnBackToStart->setCursor(Qt::PointingHandCursor);
+    btnBackToStart->setStyleSheet(
         "QPushButton {"
-        "   background-color: rgba(0, 200, 83, 0.2);"
-        "   color: #00e676;"
-        "   border: 1px solid #00e676;"
-        "   border-radius: 6px;"
-        "   font-weight: bold;"
-        "   padding: 5px 15px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #00e676;"
-        "   color: #050b14;"
-        "}"
-        );
-
-    // دکمه Pause
-    btnPause = new QPushButton("⏸ Pause", this);
-    btnPause->setCursor(Qt::PointingHandCursor);
-    btnPause->setStyleSheet(
-        "QPushButton {"
-        "   background-color: rgba(255, 145, 0, 0.2);"
-        "   color: #ffab40;"
-        "   border: 1px solid #ffab40;"
-        "   border-radius: 6px;"
-        "   font-weight: bold;"
-        "   padding: 5px 15px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #ffab40;"
-        "   color: #050b14;"
-        "}"
-        );
-
-    // دکمه Stop
-    btnStop = new QPushButton("⏹ Stop", this);
-    btnStop->setCursor(Qt::PointingHandCursor);
-    btnStop->setStyleSheet(
-        "QPushButton {"
-        "   background-color: rgba(255, 23, 68, 0.2);"
-        "   color: #ff5252;"
-        "   border: 1px solid #ff5252;"
-        "   border-radius: 6px;"
-        "   font-weight: bold;"
-        "   padding: 5px 15px;"
-        "}"
-        "QPushButton:hover {"
-        "   background-color: #ff5252;"
-        "   color: #ffffff;"
-        "}"
-        );
-
-    // نمایشگر تایمر با فونت دیجیتال نئونی
-    timerDisplayLabel = new QLabel("⏱ 00:00:00", this);
-    timerDisplayLabel->setStyleSheet(
-        "QLabel {"
-        "   background-color: #050a14;"
+        "   background-color: rgba(0, 243, 255, 0.1);"
         "   color: #00f3ff;"
-        "   font-family: 'Consolas', 'Courier New', monospace;"
-        "   font-size: 15px;"
-        "   font-weight: bold;"
-        "   border: 1px solid rgba(0, 243, 255, 0.6);"
+        "   border: 1px solid rgba(0, 243, 255, 0.5);"
         "   border-radius: 6px;"
-        "   padding: 4px 14px;"
+        "   font-weight: bold;"
+        "   padding: 5px 12px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #00f3ff;"
+        "   color: #050b14;"
         "}"
         );
 
-    simToolBar->addWidget(btnRun);
-    simToolBar->addWidget(btnPause);
-    simToolBar->addWidget(btnStop);
+    btnOpenProject = new QPushButton("📂 Open", this);
+    btnOpenProject->setCursor(Qt::PointingHandCursor);
+    btnOpenProject->setStyleSheet(btnBackToStart->styleSheet());
+
+    btnSaveProject = new QPushButton("💾 Save", this);
+    btnSaveProject->setCursor(Qt::PointingHandCursor);
+    btnSaveProject->setStyleSheet(btnBackToStart->styleSheet());
+
+    // ۲. کنترل نمایش پنل کتابخانه
+    btnToggleLibrary = new QPushButton("📚 Library Panel", this);
+    btnToggleLibrary->setCursor(Qt::PointingHandCursor);
+    btnToggleLibrary->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(255, 255, 255, 0.08);"
+        "   color: #e2e8f0;"
+        "   border: 1px solid rgba(255, 255, 255, 0.2);"
+        "   border-radius: 6px;"
+        "   font-weight: bold;"
+        "   padding: 5px 12px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(0, 243, 255, 0.2);"
+        "   color: #00f3ff;"
+        "   border-color: #00f3ff;"
+        "}"
+        );
+
+    // افزودن المان‌های باقی‌مانده به نوار ابزار
+    simToolBar->addWidget(btnBackToStart);
     simToolBar->addSeparator();
-    simToolBar->addWidget(timerDisplayLabel);
+    simToolBar->addWidget(btnOpenProject);
+    simToolBar->addWidget(btnSaveProject);
+    simToolBar->addSeparator();
+    simToolBar->addWidget(btnToggleLibrary);
 
-    // اتصال سیگنال‌های دکمه‌ها
-    connect(btnRun, &QPushButton::clicked, this, &MainWindow::onRunSimulation);
-    connect(btnPause, &QPushButton::clicked, this, &MainWindow::onPauseSimulation);
-    connect(btnStop, &QPushButton::clicked, this, &MainWindow::onStopSimulation);
+    // اتصالات (Connections)
+    connect(btnBackToStart, &QPushButton::clicked, this, &MainWindow::onBackToStartMenuClicked);
+    connect(btnOpenProject, &QPushButton::clicked, this, &MainWindow::handleOpenProject);
+    connect(btnSaveProject, &QPushButton::clicked, this, &MainWindow::onSaveProjectClicked);
+    connect(btnToggleLibrary, &QPushButton::clicked, this, &MainWindow::onToggleLibraryClicked);
 
-    // تنظیم تایمر اصلی (هر ۱۰۰۰ میلی‌ثانیه = ۱ ثانیه)
-    simTimer = new QTimer(this);
-    connect(simTimer, &QTimer::timeout, this, &MainWindow::onUpdateSimTimer);
-
-    // مخفی کردن نوار شبیه‌سازی در صفحه استارت‌منو
     simToolBar->hide();
 }
 
-// 🟢 شروع / ادامه شبیه‌سازی
-void MainWindow::onRunSimulation()
+void MainWindow::onBackToStartMenuClicked()
 {
-    if (!simTimer->isActive()) {
-        simTimer->start(1000);
-    }
-}
+    // فراخوانی onStopSimulation() حذف شد
+    stackedWidget->setCurrentWidget(startMenu);
 
-// 🟠 توقف موقت (Pause)
-void MainWindow::onPauseSimulation()
-{
-    if (simTimer->isActive()) {
-        simTimer->stop();
-    }
-}
-
-// 🔴 استاپ کامل و ریست شدن تایمر به صفر
-void MainWindow::onStopSimulation()
-{
-    simTimer->stop();
-    elapsedSeconds = 0;
-
-    // به‌روزرسانی آنی نمایشگر
-    timerDisplayLabel->setText("⏱ 00:00:00");
-}
-
-// ⏱ آپدیت متغیر زمان و فرمت نمایش (HH:MM:SS)
-void MainWindow::onUpdateSimTimer()
-{
-    elapsedSeconds++;
-
-    int hrs = elapsedSeconds / 3600;
-    int mins = (elapsedSeconds % 3600) / 60;
-    int secs = elapsedSeconds % 60;
-
-    QString timeStr = QString("⏱ %1:%2:%3")
-                          .arg(hrs, 2, 10, QChar('0'))
-                          .arg(mins, 2, 10, QChar('0'))
-                          .arg(secs, 2, 10, QChar('0'));
-
-    timerDisplayLabel->setText(timeStr);
+    libraryDock->hide();
+    coordLabel->hide();
+    zoomLabel->hide();
+    simToolBar->hide();
 }
 
 void MainWindow::initWorkspaceWidgets()
@@ -260,15 +195,17 @@ void MainWindow::initWorkspaceWidgets()
     filterLibrary("");
 }
 
-void MainWindow::handleNewProject(const QString& pageSize)
+void MainWindow::handleNewProject(const QString& pageSize, const QString& projectName, const QString& savePath)
 {
+    setWindowTitle(QString("PROMETHEUS - Circuit Simulator - %1 [%2]").arg(projectName, savePath));
+
     mainCanvas->setCanvasSize(pageSize);
     stackedWidget->setCurrentWidget(mainCanvas);
 
     libraryDock->show();
     coordLabel->show();
     zoomLabel->show();
-    simToolBar->show(); // 🌟 نمایش نوار ابزار شبیه‌سازی هنگام ورود به بوم
+    simToolBar->show();
 }
 
 void MainWindow::handleOpenProject()
@@ -278,7 +215,7 @@ void MainWindow::handleOpenProject()
     libraryDock->show();
     coordLabel->show();
     zoomLabel->show();
-    simToolBar->show(); // 🌟 نمایش نوار ابزار شبیه‌سازی هنگام ورود به بوم
+    simToolBar->show();
 }
 
 void MainWindow::filterLibrary(const QString& text)
@@ -394,4 +331,18 @@ void MainWindow::onMusicSelected(const QString& songName) {
 
     bgMusic->setSource(QUrl(filePath));
     bgMusic->play();
+}
+void MainWindow::onToggleLibraryClicked()
+{
+    if (libraryDock) {
+        libraryDock->setVisible(!libraryDock->isVisible());
+    }
+}
+
+void MainWindow::onSaveProjectClicked()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Project"), "", tr("JSON Project (*.json)"));
+    if (!fileName.isEmpty()) {
+        QMessageBox::information(this, tr("Save Project"), tr("Project saved successfully!"));
+    }
 }

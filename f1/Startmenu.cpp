@@ -8,6 +8,10 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QFileDialog>
+#include <QDir>
 
 StartMenu::StartMenu(QWidget *parent)
     : QWidget(parent)
@@ -26,7 +30,7 @@ void StartMenu::setupUI()
     mainLayout->setContentsMargins(45, 35, 45, 35);
     mainLayout->setSpacing(18);
 
-    // ۱. عنوان عنوان برنامه با هاله نئونی فیروزه‌ای
+    // ۱. عنوان برنامه با هاله نئونی فیروزه‌ای
     titleLabel = new QLabel("PROMETHEUS SIMULATOR", this);
     titleLabel->setAlignment(Qt::AlignLeft);
     titleLabel->setStyleSheet(
@@ -121,7 +125,6 @@ void StartMenu::setupUI()
     themeLabel = new QLabel("Theme Profile:", this);
     themeLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
 
-    // 🌟 تغییر نام گزینه‌های تم به Eclipse و Genesis
     themeComboBox = new QComboBox(this);
     themeComboBox->addItems(QStringList() << "Eclipse" << "Genesis");
     themeComboBox->setMinimumWidth(160);
@@ -135,7 +138,7 @@ void StartMenu::setupUI()
 
     mainLayout->addWidget(settingsGroup, 0, Qt::AlignLeft);
 
-    // ۴. 🌟 کادر موزیک و ولوم
+    // ۴. کادر موزیک و ولوم
     QGroupBox *musicGroup = new QGroupBox("🎵 Lofi Player & Audio Control", this);
     musicGroup->setMaximumWidth(700);
     QHBoxLayout *musicLayout = new QHBoxLayout(musicGroup);
@@ -175,7 +178,7 @@ void StartMenu::setupUI()
 
     mainLayout->addWidget(musicGroup, 0, Qt::AlignLeft);
 
-    // ۵. 🌟 دکمه تعاملی درباره ما (Information)
+    // ۵. دکمه تعاملی درباره ما (Information)
     QGroupBox *aboutGroup = new QGroupBox("ℹ System Info", this);
     aboutGroup->setMaximumWidth(700);
     QHBoxLayout *aboutLayout = new QHBoxLayout(aboutGroup);
@@ -221,10 +224,51 @@ void StartMenu::onNewProjectClicked()
 {
     QDialog dialog(this);
     dialog.setWindowTitle("Create New Project");
-    QVBoxLayout layout(&dialog);
+    dialog.setMinimumWidth(420);
+    dialog.setStyleSheet(
+        "QDialog { background-color: #0b0f19; border: 1px solid #00f3ff; border-radius: 12px; }"
+        "QLabel { color: #e2e8f0; font-size: 13px; font-weight: bold; font-family: 'Segoe UI'; }"
+        "QLineEdit { background-color: #0f172a; color: #00f3ff; border: 1px solid rgba(0, 243, 255, 0.4); border-radius: 6px; padding: 6px; font-size: 13px; font-weight: bold; }"
+        "QLineEdit:focus { border: 1px solid #00f3ff; }"
+        "QPushButton#btnBrowse { background-color: rgba(0, 243, 255, 0.15); color: #00f3ff; border: 1px solid #00f3ff; border-radius: 6px; padding: 6px 12px; font-weight: bold; }"
+        "QPushButton#btnBrowse:hover { background-color: #00f3ff; color: #0b0f19; }"
+        "QRadioButton { color: #e2e8f0; font-size: 13px; font-family: 'Segoe UI'; }"
+        );
 
-    QLabel label("Choose Canvas Size:", &dialog);
-    layout.addWidget(&label);
+    QVBoxLayout layout(&dialog);
+    layout.setContentsMargins(20, 20, 20, 20);
+    layout.setSpacing(12);
+
+    // ۱. نام پروژه
+    QLabel *nameLabel = new QLabel("Project Name:", &dialog);
+    QLineEdit *nameEdit = new QLineEdit("Untitled_Project", &dialog);
+    layout.addWidget(nameLabel);
+    layout.addWidget(nameEdit);
+
+    // ۲. مسیر ذخیره‌سازی
+    QLabel *pathLabel = new QLabel("Save Location:", &dialog);
+    QHBoxLayout *pathLayout = new QHBoxLayout();
+    QLineEdit *pathEdit = new QLineEdit(QDir::homePath() + "/Desktop", &dialog);
+    QPushButton *browseBtn = new QPushButton("Browse...", &dialog);
+    browseBtn->setObjectName("btnBrowse");
+    browseBtn->setCursor(Qt::PointingHandCursor);
+
+    pathLayout->addWidget(pathEdit);
+    pathLayout->addWidget(browseBtn);
+
+    layout.addWidget(pathLabel);
+    layout.addLayout(pathLayout);
+
+    connect(browseBtn, &QPushButton::clicked, &dialog, [&dialog, pathEdit]() {
+        QString dir = QFileDialog::getExistingDirectory(&dialog, "Select Save Directory", pathEdit->text());
+        if (!dir.isEmpty()) {
+            pathEdit->setText(dir);
+        }
+    });
+
+    // ۳. انتخاب ابعاد بوم
+    QLabel *label = new QLabel("Choose Canvas Size:", &dialog);
+    layout.addWidget(label);
 
     QRadioButton a4("A4 Standard", &dialog);
     QRadioButton a3("A3 Large", &dialog);
@@ -243,8 +287,13 @@ void StartMenu::onNewProjectClicked()
 
     if (dialog.exec() == QDialog::Accepted) {
         QString size = a4.isChecked() ? "A4" : (a3.isChecked() ? "A3" : "Custom");
-        emit newProjectRequested(size);
-    }
+
+        // نام پروژه و مسیر ذخیره‌سازی آماده استفاده:
+        QString projectName = nameEdit->text().trimmed();
+        if (projectName.isEmpty()) projectName = "Untitled_Project";
+        QString savePath = pathEdit->text();
+
+emit newProjectRequested(size, projectName, savePath); }
 }
 
 void StartMenu::onAboutUsClicked()
@@ -276,14 +325,12 @@ void StartMenu::onAboutUsClicked()
     dialog.exec();
 }
 
-// 🌟 به‌روزرسانی شرط تعویض تم براساس گزینه‌های Eclipse و Genesis
 void StartMenu::onThemeChanged(const QString &theme)
 {
     if (theme == "Eclipse") applyDarkTheme();
     else applyBlueTheme();
 }
 
-// 🌟 تم Eclipse (تاریک کهکشانی + پس‌زمینه ANNA.jpg)
 void StartMenu::applyDarkTheme()
 {
     if (this->window()) {
@@ -350,8 +397,6 @@ void StartMenu::applyDarkTheme()
         );
 }
 
-// 🌟 تم Genesis (آبی-اقیانوسی + پس‌زمینه ANNA2.jpg)
-// 🌟 تم Genesis (هماهنگ‌شده با تم سنگی و نئون‌های طلایی ANNA2.jpg)
 void StartMenu::applyBlueTheme()
 {
     if (this->window()) {
