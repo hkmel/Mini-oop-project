@@ -139,22 +139,24 @@ void MainWindow::onBackToStartMenuClicked()
     zoomLabel->hide();
     simToolBar->hide();
 }
-
 void MainWindow::initWorkspaceWidgets()
 {
-    libraryDock = new QDockWidget(tr("کتابخانه قطعات"), this);
+    // ---------------------------------------------------------------------
+    // ۱. ساخت و تنظیمات کامل Dock Widget کتابخانه قطعات (بدون تغییر)
+    // ---------------------------------------------------------------------
+    libraryDock = new QDockWidget(tr("component liberary"), this);
     libraryDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     QWidget* dockContents = new QWidget(libraryDock);
     QVBoxLayout* layout = new QVBoxLayout(dockContents);
 
     searchEdit = new QLineEdit(dockContents);
-    searchEdit->setPlaceholderText(tr("جستجوی قطعه یا دسته بندی..."));
+    searchEdit->setPlaceholderText(tr("Search the component..."));
     layout->addWidget(searchEdit);
     connect(searchEdit, &QLineEdit::textChanged, this, &MainWindow::filterLibrary);
 
     libraryTree = new QTreeWidget(dockContents);
-    libraryTree->setHeaderLabel(tr("دسته بندی المان ها"));
+    libraryTree->setHeaderLabel(tr("Sort the component"));
     layout->addWidget(libraryTree);
     connect(libraryTree, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
 
@@ -163,8 +165,8 @@ void MainWindow::initWorkspaceWidgets()
     layout->addWidget(previewWidgetPlaceholder);
 
     QHBoxLayout* btnLayout = new QHBoxLayout();
-    btnAddActive = new QPushButton(tr("<< اضافه به فعال"), dockContents);
-    btnRemoveActive = new QPushButton(tr("حذف از فعال >>"), dockContents);
+    btnAddActive = new QPushButton(tr("<<Add to Activ"), dockContents);
+    btnRemoveActive = new QPushButton(tr("Delete  >>"), dockContents);
     btnLayout->addWidget(btnAddActive);
     btnLayout->addWidget(btnRemoveActive);
     layout->addLayout(btnLayout);
@@ -173,7 +175,7 @@ void MainWindow::initWorkspaceWidgets()
     connect(btnRemoveActive, &QPushButton::clicked, this, &MainWindow::onRemoveActiveClicked);
 
     activeList = new QListWidget(dockContents);
-    layout->addWidget(new QLabel(tr("قطعات فعال پروژه (Devices):"), dockContents));
+    layout->addWidget(new QLabel(tr(" (Devices):"), dockContents));
     layout->addWidget(activeList);
     connect(activeList, &QListWidget::itemClicked, this, &MainWindow::onActiveListClicked);
 
@@ -183,15 +185,53 @@ void MainWindow::initWorkspaceWidgets()
 
     libraryDock->hide();
 
-    coordLabel = new QLabel(tr("مختصات: (0, 0)"), this);
-    zoomLabel = new QLabel(tr("بزرگ نمایی: 100%"), this);
+    // ---------------------------------------------------------------------
+    // ۲. تغییرات جدید: استایل‌دهی نوار وضعیت (QStatusBar) به سبک پروتئوس
+    // ---------------------------------------------------------------------
 
-    coordLabel->hide();
-    zoomLabel->hide();
+    // استایل تیره زمینه QStatusBar
+    statusBar()->setStyleSheet(
+        "QStatusBar {"
+        "    background-color: #0b0e14;"
+        "    border-top: 1px solid #003300;"
+        "}"
+        "QStatusBar::item {"
+        "    border: none;"
+        "}"
+        );
 
+    // استایل سبز فسفری نئون برای باکس‌های مختصات و زوم
+    QString statusLabelStyle =
+        "QLabel {"
+        "    color: #39FF14;"                     /* سبز فسفری نئون */
+        "    background-color: #041204;"          /* پس‌زمینه تیره */
+        "    border: 1px solid #00aa00;"          /* کادر دور سبز */
+        "    border-radius: 4px;"
+        "    padding: 3px 10px;"
+        "    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;"
+        "    font-weight: bold;"
+        "    font-size: 12px;"
+        "}";
+
+    // ساخت لیبل مختصات با فرمت جدید پروتئوس
+    coordLabel = new QLabel("X: +0   Y: +0", this);
+    coordLabel->setStyleSheet(statusLabelStyle);
+
+    // ساخت لیبل زوم با فرمت پروتئوس
+    zoomLabel = new QLabel("Zoom: 100%", this);
+    zoomLabel->setStyleSheet(statusLabelStyle);
+
+    // نمایش لیبل‌ها
+    coordLabel->show();
+    zoomLabel->show();
+
+    // افزودن به سمت راست نوار وضعیت
     statusBar()->addPermanentWidget(coordLabel);
     statusBar()->addPermanentWidget(zoomLabel);
 
+    // ---------------------------------------------------------------------
+    // ۳. بارگذاری اولیه لیست کتابخانه (بدون تغییر)
+    // ---------------------------------------------------------------------
     filterLibrary("");
 }
 
@@ -299,12 +339,19 @@ void MainWindow::onActiveListClicked(QListWidgetItem* item)
 
 void MainWindow::onMouseMoved(const QPointF& pos)
 {
-    coordLabel->setText(QString("مختصات: (%1, %2)").arg(int(pos.x())).arg(int(pos.y())));
+    int x = qRound(pos.x());
+    int y = -qRound(pos.y());
+
+    // فرمت‌دهی علامت + و - مشابه پروتئوس
+    QString xStr = QString("%1%2").arg(x >= 0 ? "+" : "").arg(x);
+    QString yStr = QString("%1%2").arg(y >= 0 ? "+" : "").arg(y);
+
+    coordLabel->setText(QString("X: %1   Y: %2").arg(xStr, yStr));
 }
 
 void MainWindow::onZoomChanged(int percentage)
 {
-    zoomLabel->setText(QString("بزرگ نمایی: %1%").arg(percentage));
+    zoomLabel->setText(QString("Zoom: %1%").arg(percentage));
 }
 
 void MainWindow::onComponentSelected(Component* comp)

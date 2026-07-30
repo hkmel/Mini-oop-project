@@ -529,6 +529,7 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
 
 
     createFloatingControlPanel();
+    updateZoomValue();
 
 }
 
@@ -839,69 +840,39 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
 
 
 void MainCanvas::mouseMoveEvent(QMouseEvent* event) {
-
     QPointF scenePos = mapToScene(event->pos());
+    QPointF snappedPos = snapToGrid(scenePos); // اسنپ مختصات روی گرید
 
-    emit mouseMoved(scenePos);
-
-
+    emit mouseMoved(snappedPos); // ارسال مختصات اسنپ‌شده به MainWindow
 
     if (activeWire) {
-
         Pin* targetPin = findPinAt(scenePos);
-
         if (targetPin) {
-
             activeWire->setTempEndPoint(targetPin->getGlobalPosition());
-
         } else {
-
             activeWire->setTempEndPoint(scenePos);
-
         }
-
         event->accept();
-
         return;
-
     }
-
-
 
     if (isPanning) {
-
         QPoint delta = lastMousePos - event->pos();
-
         lastMousePos = event->pos();
-
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() + delta.x());
-
         verticalScrollBar()->setValue(verticalScrollBar()->value() + delta.y());
-
         event->accept();
-
         return;
-
     }
-
-
 
     Pin* pinUnderMouse = findPinAt(scenePos);
-
     if (pinUnderMouse != hoveredPin) {
-
         hoveredPin = pinUnderMouse;
-
         scene->update();
-
     }
 
-
-
     QGraphicsView::mouseMoveEvent(event);
-
 }
-
 
 
 void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {

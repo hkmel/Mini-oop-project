@@ -12,9 +12,14 @@
 #include <QPushButton>
 #include <QFileDialog>
 #include <QDir>
+#include <QSettings>
+#include <QFileInfo>
 
 StartMenu::StartMenu(QWidget *parent)
     : QWidget(parent)
+    , currentTheme("Eclipse")
+    , currentTrack("voss")
+    , currentVolume(70)
 {
     setupUI();
     loadRecentProjects();
@@ -24,49 +29,80 @@ StartMenu::~StartMenu() {}
 
 void StartMenu::setupUI()
 {
-    setMinimumSize(750, 650);
+    setMinimumSize(800, 600);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(45, 35, 45, 35);
-    mainLayout->setSpacing(18);
+    mainLayout->setContentsMargins(45, 30, 45, 30);
+    mainLayout->setSpacing(20);
 
-    // ۱. عنوان برنامه با هاله نئونی فیروزه‌ای
+    // -----------------------------------------------------------------
+    // هدر بالا: عنوان + نشانگر وضعیت موتور + دکمه تنظیمات
+    // -----------------------------------------------------------------
+    QHBoxLayout *headerLayout = new QHBoxLayout();
+
     titleLabel = new QLabel("PROMETHEUS SIMULATOR", this);
-    titleLabel->setAlignment(Qt::AlignLeft);
     titleLabel->setStyleSheet(
-        "font-size: 32px;"
+        "font-size: 30px;"
         "font-weight: 900;"
         "color: #00f3ff;"
         "letter-spacing: 2px;"
         "background: transparent;"
         );
-    mainLayout->addWidget(titleLabel, 0, Qt::AlignLeft);
 
-    // ۲. کادر اصلی پروژه‌ها (با استایل شیشه‌ای مات کهکشانی)
-    QWidget *centerBox = new QWidget(this);
+    settingsBtn = new QPushButton("⚙ Preferences", this);
+    settingsBtn->setCursor(Qt::PointingHandCursor);
+    settingsBtn->setMinimumHeight(38);
+    settingsBtn->setStyleSheet(
+        "QPushButton {"
+        "   background: rgba(15, 23, 42, 200);"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.5);"
+        "   border-radius: 8px;"
+        "   font-weight: bold;"
+        "   padding: 0 16px;"
+        "}"
+        "QPushButton:hover {"
+        "   background: #00f3ff;"
+        "   color: #0b0f19;"
+        "}"
+        );
+    connect(settingsBtn, &QPushButton::clicked, this, &StartMenu::openSettingsDialog);
+
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addSpacing(10);
+    headerLayout->addWidget(statusBadge);
+    headerLayout->addStretch();
+    headerLayout->addWidget(settingsBtn);
+
+    mainLayout->addLayout(headerLayout);
+
+    // -----------------------------------------------------------------
+    // کادر مرکزی دو ستونه (شروع سریع + پروژه‌های اخیر)
+    // -----------------------------------------------------------------
+    centerBox = new QWidget(this);
     centerBox->setObjectName("centerBox");
-    centerBox->setMaximumWidth(700);
 
     QHBoxLayout *contentLayout = new QHBoxLayout(centerBox);
-    contentLayout->setContentsMargins(22, 22, 22, 22);
-    contentLayout->setSpacing(25);
+    contentLayout->setContentsMargins(25, 25, 25, 25);
+    contentLayout->setSpacing(30);
 
+    // ستون چپ: اکشن‌های اصلی
     QVBoxLayout *leftLayout = new QVBoxLayout();
-    leftLayout->setSpacing(15);
+    leftLayout->setSpacing(16);
 
-    QLabel *startTitle = new QLabel("⚡ Get Started", centerBox);
+    QLabel *startTitle = new QLabel("🚀 Launch Action", centerBox);
     startTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #00f3ff; background: transparent;");
     leftLayout->addWidget(startTitle);
 
     newProjectBtn = new QPushButton("Create New Project", centerBox);
     newProjectBtn->setCursor(Qt::PointingHandCursor);
-    newProjectBtn->setMinimumHeight(45);
+    newProjectBtn->setMinimumHeight(48);
     newProjectBtn->setStyleSheet(
         "QPushButton {"
         "   background: linear-gradient(135deg, #0d6efd, #00d2ff);"
         "   color: white;"
         "   border: 1px solid #00f3ff;"
-        "   border-radius: 8px;"
+        "   border-radius: 10px;"
         "   font-size: 14px;"
         "   font-weight: bold;"
         "}"
@@ -81,13 +117,13 @@ void StartMenu::setupUI()
 
     openProjectBtn = new QPushButton("Open Existing Project", centerBox);
     openProjectBtn->setCursor(Qt::PointingHandCursor);
-    openProjectBtn->setMinimumHeight(45);
+    openProjectBtn->setMinimumHeight(48);
     openProjectBtn->setStyleSheet(
         "QPushButton {"
         "   background: rgba(15, 23, 42, 180);"
         "   color: #00f3ff;"
         "   border: 1px solid rgba(0, 243, 255, 0.5);"
-        "   border-radius: 8px;"
+        "   border-radius: 10px;"
         "   font-size: 14px;"
         "   font-weight: bold;"
         "}"
@@ -99,125 +135,228 @@ void StartMenu::setupUI()
         );
     connect(openProjectBtn, &QPushButton::clicked, this, &StartMenu::openProjectRequested);
     leftLayout->addWidget(openProjectBtn);
-    leftLayout->addStretch();
 
+    // راهنمای سریع کلیدهای میانبر
+    QLabel *shortcutInfo = new QLabel("💡 Quick Tips:\n• Make and Test!\n• Press 'ctrl+R' to Rotate Component\n• 'turn off your VPN to best performance'\n•'version 1.1' ", centerBox);
+    shortcutInfo->setStyleSheet("color: #94a3b8; font-size: 12px; line-height: 1.4; margin-top: 10px; background: transparent;");
+    leftLayout->addWidget(shortcutInfo);
+
+    leftLayout->addStretch();
     contentLayout->addLayout(leftLayout, 1);
 
+    // ستون راست: پروژه‌های اخیر و فیلتر جستجو
     QVBoxLayout *rightLayout = new QVBoxLayout();
+    rightLayout->setSpacing(10);
+
     QLabel *recentTitle = new QLabel("🕒 Recent Projects", centerBox);
     recentTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #00f3ff; background: transparent;");
     rightLayout->addWidget(recentTitle);
 
+    searchEdit = new QLineEdit(centerBox);
+    searchEdit->setPlaceholderText("🔍 Search recent...");
+    searchEdit->setStyleSheet(
+        "QLineEdit {"
+        "   background: rgba(5, 10, 20, 200);"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.3);"
+        "   border-radius: 6px;"
+        "   padding: 6px 10px;"
+        "   font-size: 12px;"
+        "}"
+        "QLineEdit:focus { border: 1px solid #00f3ff; }"
+        );
+    connect(searchEdit, &QLineEdit::textChanged, this, &StartMenu::filterRecentProjects);
+    rightLayout->addWidget(searchEdit);
+
     recentProjectsList = new QListWidget(centerBox);
-    recentProjectsList->setMinimumHeight(160);
-    connect(recentProjectsList, &QListWidget::currentTextChanged, this, &StartMenu::recentProjectSelected);
+    recentProjectsList->setMinimumHeight(200);
+    connect(recentProjectsList, &QListWidget::itemClicked, this, &StartMenu::onRecentItemClicked);
     rightLayout->addWidget(recentProjectsList);
 
     contentLayout->addLayout(rightLayout, 1);
-    mainLayout->addWidget(centerBox, 0, Qt::AlignLeft);
+    mainLayout->addWidget(centerBox);
 
-    // ۳. کادر تنظیمات تم (Settings)
-    settingsGroup = new QGroupBox("⚙ Settings", this);
-    settingsGroup->setMaximumWidth(700);
-    QHBoxLayout *settingsLayout = new QHBoxLayout(settingsGroup);
-    settingsLayout->setContentsMargins(15, 12, 15, 12);
+    // -----------------------------------------------------------------
+    // فوتر پایین: اطلاعات سازندگان
+    // -----------------------------------------------------------------
+    QHBoxLayout *footerLayout = new QHBoxLayout();
 
-    themeLabel = new QLabel("Theme Profile:", this);
-    themeLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
-
-    themeComboBox = new QComboBox(this);
-    themeComboBox->addItems(QStringList() << "Eclipse" << "Genesis");
-    themeComboBox->setMinimumWidth(160);
-    themeComboBox->setMinimumHeight(32);
-    connect(themeComboBox, &QComboBox::currentTextChanged, this, &StartMenu::onThemeChanged);
-
-    settingsLayout->addWidget(themeLabel);
-    settingsLayout->addSpacing(15);
-    settingsLayout->addWidget(themeComboBox);
-    settingsLayout->addStretch();
-
-    mainLayout->addWidget(settingsGroup, 0, Qt::AlignLeft);
-
-    // ۴. کادر موزیک و ولوم
-    QGroupBox *musicGroup = new QGroupBox("🎵 Lofi Player & Audio Control", this);
-    musicGroup->setMaximumWidth(700);
-    QHBoxLayout *musicLayout = new QHBoxLayout(musicGroup);
-    musicLayout->setContentsMargins(15, 12, 15, 12);
-
-    QLabel *musicLabel = new QLabel("Track:", this);
-    musicLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
-
-    QComboBox *startMusicCombo = new QComboBox(this);
-    startMusicCombo->addItem("Voss", "voss");
-    startMusicCombo->addItem("Dream Odyssey", "dream_odyssey");
-    startMusicCombo->setMinimumWidth(160);
-    startMusicCombo->setMinimumHeight(32);
-
-    QLabel *volLabel = new QLabel("🔊 Volume:", this);
-    volLabel->setStyleSheet("font-size: 13px; font-weight: bold; background: transparent;");
-
-    QSlider *startVolSlider = new QSlider(Qt::Horizontal, this);
-    startVolSlider->setRange(0, 100);
-    startVolSlider->setValue(70);
-    startVolSlider->setMinimumWidth(160);
-
-    musicLayout->addWidget(musicLabel);
-    musicLayout->addWidget(startMusicCombo);
-    musicLayout->addSpacing(25);
-    musicLayout->addWidget(volLabel);
-    musicLayout->addWidget(startVolSlider);
-    musicLayout->addStretch();
-
-    connect(startMusicCombo, &QComboBox::activated, this, [this, startMusicCombo](int index) {
-        emit musicChanged(startMusicCombo->itemData(index).toString());
-    });
-
-    connect(startVolSlider, &QSlider::valueChanged, this, [this](int value) {
-        emit volumeChanged(value);
-    });
-
-    mainLayout->addWidget(musicGroup, 0, Qt::AlignLeft);
-
-    // ۵. دکمه تعاملی درباره ما (Information)
-    QGroupBox *aboutGroup = new QGroupBox("ℹ System Info", this);
-    aboutGroup->setMaximumWidth(700);
-    QHBoxLayout *aboutLayout = new QHBoxLayout(aboutGroup);
-    aboutLayout->setContentsMargins(15, 12, 15, 12);
-
-    QPushButton *btnAboutUs = new QPushButton("📖 Developers Info", this);
-    btnAboutUs->setCursor(Qt::PointingHandCursor);
-    btnAboutUs->setMinimumHeight(36);
-    btnAboutUs->setStyleSheet(
+    aboutUsBtn = new QPushButton("📖 Developers Info", this);
+    aboutUsBtn->setCursor(Qt::PointingHandCursor);
+    aboutUsBtn->setMinimumHeight(32);
+    aboutUsBtn->setStyleSheet(
         "QPushButton {"
-        "   background-color: rgba(0, 243, 255, 0.1);"
-        "   color: #00f3ff;"
-        "   border: 1px solid #00f3ff;"
-        "   border-radius: 6px;"
+        "   background: transparent;"
+        "   color: #94a3b8;"
+        "   border: none;"
+        "   font-size: 12px;"
         "   font-weight: bold;"
-        "   font-size: 13px;"
-        "   padding: 0 20px;"
         "}"
         "QPushButton:hover {"
-        "   background-color: #00f3ff;"
-        "   color: #050b14;"
+        "   color: #00f3ff;"
+        "   text-decoration: underline;"
         "}"
         );
-    connect(btnAboutUs, &QPushButton::clicked, this, &StartMenu::onAboutUsClicked);
+    connect(aboutUsBtn, &QPushButton::clicked, this, &StartMenu::onAboutUsClicked);
 
-    aboutLayout->addWidget(btnAboutUs);
-    aboutLayout->addStretch();
+    footerLayout->addWidget(aboutUsBtn);
+    footerLayout->addStretch();
 
-    mainLayout->addWidget(aboutGroup, 0, Qt::AlignLeft);
-    mainLayout->addStretch();
+    mainLayout->addLayout(footerLayout);
 
     applyDarkTheme();
 }
 
+// ---------------------------------------------------------------------
+// پنجره یکپارچه تنظیمات (Preferences Modal)
+// ---------------------------------------------------------------------
+void StartMenu::openSettingsDialog()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("⚙ Preferences & Settings");
+    dialog.setMinimumWidth(440);
+    dialog.setStyleSheet(
+        "QDialog { background-color: #0b0f19; border: 1px solid #00f3ff; border-radius: 12px; }"
+        "QLabel { color: #e2e8f0; font-size: 13px; font-weight: bold; font-family: 'Segoe UI'; }"
+        "QGroupBox {"
+        "   background: rgba(15, 23, 42, 180);"
+        "   border: 1px solid rgba(0, 243, 255, 0.3);"
+        "   border-radius: 8px;"
+        "   color: #00f3ff;"
+        "   font-weight: bold;"
+        "   margin-top: 10px;"
+        "   padding-top: 12px;"
+        "}"
+        "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }"
+        "QComboBox {"
+        "   background: #0f172a;"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.4);"
+        "   border-radius: 6px;"
+        "   padding: 5px 8px;"
+        "}"
+        "QSlider::groove:horizontal { height: 6px; background: #1e293b; border-radius: 3px; }"
+        "QSlider::handle:horizontal { background: #00f3ff; width: 16px; height: 16px; margin: -5px 0; border-radius: 8px; }"
+        );
+
+    QVBoxLayout layout(&dialog);
+    layout.setContentsMargins(20, 20, 20, 20);
+    layout.setSpacing(15);
+
+    // ۱. گروه تم‌ها
+    QGroupBox *themeGroup = new QGroupBox("🎨 Theme Profile", &dialog);
+    QHBoxLayout *themeLayout = new QHBoxLayout(themeGroup);
+    QComboBox *dlgThemeCombo = new QComboBox(&dialog);
+    dlgThemeCombo->addItems(QStringList() << "Eclipse" << "Genesis");
+    dlgThemeCombo->setCurrentText(currentTheme);
+    themeLayout->addWidget(new QLabel("Visual Preset:", &dialog));
+    themeLayout->addWidget(dlgThemeCombo);
+
+    connect(dlgThemeCombo, &QComboBox::currentTextChanged, this, [this](const QString &theme) {
+        currentTheme = theme;
+        onThemeChanged(theme);
+    });
+
+    layout.addWidget(themeGroup);
+
+    // ۲. گروه پخش موزیک و ولوم
+    QGroupBox *audioGroup = new QGroupBox("🎵 Audio & Lo-Fi Player", &dialog);
+    QVBoxLayout *audioLayout = new QVBoxLayout(audioGroup);
+    audioLayout->setSpacing(12);
+
+    QHBoxLayout *trackLayout = new QHBoxLayout();
+    QComboBox *dlgTrackCombo = new QComboBox(&dialog);
+    dlgTrackCombo->addItem("Voss", "voss");
+    dlgTrackCombo->addItem("Dream Odyssey", "dream_odyssey");
+    int trackIdx = dlgTrackCombo->findData(currentTrack);
+    if (trackIdx != -1) dlgTrackCombo->setCurrentIndex(trackIdx);
+
+    trackLayout->addWidget(new QLabel("Track:", &dialog));
+    trackLayout->addWidget(dlgTrackCombo);
+    audioLayout->addLayout(trackLayout);
+
+    connect(dlgTrackCombo, &QComboBox::activated, this, [this, dlgTrackCombo](int index) {
+        currentTrack = dlgTrackCombo->itemData(index).toString();
+        emit musicChanged(currentTrack);
+    });
+
+    QHBoxLayout *volLayout = new QHBoxLayout();
+    QSlider *dlgVolSlider = new QSlider(Qt::Horizontal, &dialog);
+    dlgVolSlider->setRange(0, 100);
+    dlgVolSlider->setValue(currentVolume);
+
+    QLabel *volValLabel = new QLabel(QString::number(currentVolume) + "%", &dialog);
+    volValLabel->setMinimumWidth(35);
+
+    volLayout->addWidget(new QLabel("🔊 Volume:", &dialog));
+    volLayout->addWidget(dlgVolSlider);
+    volLayout->addWidget(volValLabel);
+    audioLayout->addLayout(volLayout);
+
+    connect(dlgVolSlider, &QSlider::valueChanged, this, [this, volValLabel](int value) {
+        currentVolume = value;
+        volValLabel->setText(QString::number(value) + "%");
+        emit volumeChanged(value);
+    });
+
+    layout.addWidget(audioGroup);
+
+    // ۳. دکمه تایید
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok, &dialog);
+    connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    layout.addWidget(&buttonBox, 0, Qt::AlignRight);
+
+    dialog.exec();
+}
+
+void StartMenu::filterRecentProjects(const QString &text)
+{
+    for (int i = 0; i < recentProjectsList->count(); ++i) {
+        QListWidgetItem *item = recentProjectsList->item(i);
+        bool matches = item->text().contains(text, Qt::CaseInsensitive);
+        item->setHidden(!matches);
+    }
+}
+
 void StartMenu::loadRecentProjects()
 {
-    recentProjectsList->addItem("Digital Clock Project.json");
-    recentProjectsList->addItem("Counter 8bit Project.json");
-    recentProjectsList->addItem("Power Supply Project.json");
+    recentProjectsList->clear();
+    QSettings settings("PrometheusTeam", "PrometheusSimulator");
+    QStringList recentFiles = settings.value("recentProjects").toStringList();
+
+    for (const QString &filePath : recentFiles) {
+        QFileInfo fileInfo(filePath);
+        QListWidgetItem *item = new QListWidgetItem(fileInfo.fileName(), recentProjectsList);
+        item->setData(Qt::UserRole, filePath);
+        item->setToolTip(filePath);
+    }
+}
+
+void StartMenu::addRecentProject(const QString &filePath)
+{
+    if (filePath.isEmpty()) return;
+
+    QSettings settings("PrometheusTeam", "PrometheusSimulator");
+    QStringList recentFiles = settings.value("recentProjects").toStringList();
+
+    recentFiles.removeAll(filePath);
+    recentFiles.prepend(filePath);
+
+    while (recentFiles.size() > 10) {
+        recentFiles.removeLast();
+    }
+
+    settings.setValue("recentProjects", recentFiles);
+    loadRecentProjects();
+}
+
+void StartMenu::onRecentItemClicked(QListWidgetItem *item)
+{
+    if (!item) return;
+    QString fullPath = item->data(Qt::UserRole).toString();
+    if (fullPath.isEmpty()) fullPath = item->text();
+
+    emit recentProjectSelected(fullPath);
 }
 
 void StartMenu::onNewProjectClicked()
@@ -239,13 +378,11 @@ void StartMenu::onNewProjectClicked()
     layout.setContentsMargins(20, 20, 20, 20);
     layout.setSpacing(12);
 
-    // ۱. نام پروژه
     QLabel *nameLabel = new QLabel("Project Name:", &dialog);
     QLineEdit *nameEdit = new QLineEdit("Untitled_Project", &dialog);
     layout.addWidget(nameLabel);
     layout.addWidget(nameEdit);
 
-    // ۲. مسیر ذخیره‌سازی
     QLabel *pathLabel = new QLabel("Save Location:", &dialog);
     QHBoxLayout *pathLayout = new QHBoxLayout();
     QLineEdit *pathEdit = new QLineEdit(QDir::homePath() + "/Desktop", &dialog);
@@ -266,7 +403,6 @@ void StartMenu::onNewProjectClicked()
         }
     });
 
-    // ۳. انتخاب ابعاد بوم
     QLabel *label = new QLabel("Choose Canvas Size:", &dialog);
     layout.addWidget(label);
 
@@ -288,12 +424,18 @@ void StartMenu::onNewProjectClicked()
     if (dialog.exec() == QDialog::Accepted) {
         QString size = a4.isChecked() ? "A4" : (a3.isChecked() ? "A3" : "Custom");
 
-        // نام پروژه و مسیر ذخیره‌سازی آماده استفاده:
         QString projectName = nameEdit->text().trimmed();
         if (projectName.isEmpty()) projectName = "Untitled_Project";
+        if (!projectName.endsWith(".json", Qt::CaseInsensitive)) {
+            projectName += ".json";
+        }
         QString savePath = pathEdit->text();
+        QString fullPath = QDir(savePath).filePath(projectName);
 
-emit newProjectRequested(size, projectName, savePath); }
+        addRecentProject(fullPath);
+
+        emit newProjectRequested(size, projectName, savePath);
+    }
 }
 
 void StartMenu::onAboutUsClicked()
@@ -333,6 +475,8 @@ void StartMenu::onThemeChanged(const QString &theme)
 
 void StartMenu::applyDarkTheme()
 {
+    if (statusBadge) statusBadge->setStyleSheet("background: rgba(0, 243, 255, 0.1); color: #00f3ff; border: 1px solid rgba(0, 243, 255, 0.4); border-radius: 12px; padding: 4px 10px; font-size: 11px; font-weight: bold;");
+
     if (this->window()) {
         this->window()->setStyleSheet(
             "QMainWindow, #MainWindow {"
@@ -351,19 +495,6 @@ void StartMenu::applyDarkTheme()
         "   color: #f1f5f9;"
         "}"
         "QLabel { color: #f1f5f9; }"
-        "QGroupBox {"
-        "   background: rgba(8, 14, 28, 190);"
-        "   border: 1px solid rgba(0, 243, 255, 0.3);"
-        "   border-radius: 12px;"
-        "   color: #00f3ff;"
-        "   font-weight: bold;"
-        "   margin-top: 6px;"
-        "}"
-        "QGroupBox::title {"
-        "   subcontrol-origin: margin;"
-        "   left: 12px;"
-        "   padding: 0 6px;"
-        "}"
         "QListWidget {"
         "   background: rgba(5, 10, 20, 220);"
         "   color: #00f3ff;"
@@ -375,30 +506,13 @@ void StartMenu::applyDarkTheme()
         "   background: rgba(0, 243, 255, 0.15);"
         "   border-radius: 4px;"
         "}"
-        "QComboBox {"
-        "   background: #0f172a;"
-        "   color: #00f3ff;"
-        "   border: 1px solid rgba(0, 243, 255, 0.4);"
-        "   border-radius: 6px;"
-        "   padding: 4px 8px;"
-        "}"
-        "QSlider::groove:horizontal {"
-        "   height: 5px;"
-        "   background: #1e293b;"
-        "   border-radius: 2px;"
-        "}"
-        "QSlider::handle:horizontal {"
-        "   background: #00f3ff;"
-        "   width: 14px;"
-        "   height: 14px;"
-        "   margin: -5px 0;"
-        "   border-radius: 7px;"
-        "}"
         );
 }
 
 void StartMenu::applyBlueTheme()
 {
+    if (statusBadge) statusBadge->setStyleSheet("background: rgba(229, 169, 59, 0.1); color: #e5a93b; border: 1px solid rgba(229, 169, 59, 0.4); border-radius: 12px; padding: 4px 10px; font-size: 11px; font-weight: bold;");
+
     if (this->window()) {
         this->window()->setStyleSheet(
             "QMainWindow, #MainWindow {"
@@ -417,19 +531,6 @@ void StartMenu::applyBlueTheme()
         "   color: #ffffff;"
         "}"
         "QLabel { color: #f0e2c6; }"
-        "QGroupBox {"
-        "   background: rgba(12, 16, 23, 195);"
-        "   border: 1px solid rgba(229, 169, 59, 0.35);"
-        "   border-radius: 12px;"
-        "   color: #e5a93b;"
-        "   font-weight: bold;"
-        "   margin-top: 6px;"
-        "}"
-        "QGroupBox::title {"
-        "   subcontrol-origin: margin;"
-        "   left: 12px;"
-        "   padding: 0 6px;"
-        "}"
         "QListWidget {"
         "   background: rgba(8, 11, 16, 230);"
         "   color: #e5a93b;"
@@ -440,25 +541,6 @@ void StartMenu::applyBlueTheme()
         "QListWidget::item:hover {"
         "   background: rgba(229, 169, 59, 0.15);"
         "   border-radius: 4px;"
-        "}"
-        "QComboBox {"
-        "   background: #111620;"
-        "   color: #e5a93b;"
-        "   border: 1px solid rgba(229, 169, 59, 0.4);"
-        "   border-radius: 6px;"
-        "   padding: 4px 8px;"
-        "}"
-        "QSlider::groove:horizontal {"
-        "   height: 5px;"
-        "   background: #18202c;"
-        "   border-radius: 2px;"
-        "}"
-        "QSlider::handle:horizontal {"
-        "   background: #e5a93b;"
-        "   width: 14px;"
-        "   height: 14px;"
-        "   margin: -5px 0;"
-        "   border-radius: 7px;"
         "}"
         );
 }
