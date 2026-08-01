@@ -234,10 +234,12 @@ void MainWindow::initWorkspaceWidgets()
     // ---------------------------------------------------------------------
     filterLibrary("");
 }
-
 void MainWindow::handleNewProject(const QString& pageSize, const QString& projectName, const QString& savePath)
 {
     setWindowTitle(QString("PROMETHEUS - Circuit Simulator - %1 [%2]").arg(projectName, savePath));
+
+    // پاکسازی بوم از قطعات و سیم‌های احتمالی قبلی
+    mainCanvas->clearCanvas();
 
     mainCanvas->setCanvasSize(pageSize);
     stackedWidget->setCurrentWidget(mainCanvas);
@@ -247,15 +249,35 @@ void MainWindow::handleNewProject(const QString& pageSize, const QString& projec
     zoomLabel->show();
     simToolBar->show();
 }
-
 void MainWindow::handleOpenProject()
 {
-    stackedWidget->setCurrentWidget(mainCanvas);
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    tr("Open Project"),
+                                                    "",
+                                                    tr("JSON Project (*.json)"));
 
-    libraryDock->show();
-    coordLabel->show();
-    zoomLabel->show();
-    simToolBar->show();
+    // اگر کاربر پنجره را بست و فایلی انتخاب نکرد
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    // فراخوانی تابع لود پروژه در بوم
+    if (mainCanvas->loadFromFile(fileName)) {
+        // تغییر عنوان پنجره به نام فایل لود شده
+        QFileInfo fileInfo(fileName);
+        setWindowTitle(QString("PROMETHEUS - Circuit Simulator - %1").arg(fileInfo.fileName()));
+
+        // نمایش بوم و ابزارها
+        stackedWidget->setCurrentWidget(mainCanvas);
+        libraryDock->show();
+        coordLabel->show();
+        zoomLabel->show();
+        simToolBar->show();
+
+        QMessageBox::information(this, tr("Success"), tr("Project loaded successfully!"));
+    } else {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to open or parse project file!"));
+    }
 }
 
 void MainWindow::filterLibrary(const QString& text)
@@ -388,8 +410,20 @@ void MainWindow::onToggleLibraryClicked()
 
 void MainWindow::onSaveProjectClicked()
 {
-    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Project"), "", tr("JSON Project (*.json)"));
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                    tr("Save Project"),
+                                                    "",
+                                                    tr("JSON Project (*.json)"));
     if (!fileName.isEmpty()) {
-        QMessageBox::information(this, tr("Save Project"), tr("Project saved successfully!"));
+        // اگر پسوند .json نداشت، به آن اضافه می‌کنیم
+        if (!fileName.endsWith(".json", Qt::CaseInsensitive)) {
+            fileName += ".json";
+        }
+
+        if (mainCanvas->saveToFile(fileName)) {
+            QMessageBox::information(this, tr("Save Project"), tr("Project saved successfully!"));
+        } else {
+            QMessageBox::critical(this, tr("Save Project"), tr("Failed to save project!"));
+        }
     }
 }

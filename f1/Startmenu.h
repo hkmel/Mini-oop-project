@@ -33,6 +33,7 @@ private slots:
     void onNewProjectClicked();
     void onThemeChanged(const QString &theme);
     void onAboutUsClicked();
+    void openHelpDialog();
     void onRecentItemClicked(QListWidgetItem *item);
     void openSettingsDialog();
     void filterRecentProjects(const QString &text);
@@ -48,6 +49,7 @@ private:
     QLabel *statusBadge;
     QPushButton *newProjectBtn;
     QPushButton *openProjectBtn;
+    QPushButton *helpBtn;
     QPushButton *settingsBtn;
     QPushButton *aboutUsBtn;
 

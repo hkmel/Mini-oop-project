@@ -7,11 +7,25 @@
 #include "pin.h"
 
 #include "wire.h"
-
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QDoubleSpinBox>
+#include <QLabel>
+#include <QDialogButtonBox>
+#include <QPushButton>
+#include <QFrame>
 #include "probe.h"
 
 #include <QGraphicsItem>
-
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QLineEdit>
+#include <QDoubleSpinBox>
+#include <QLabel>
+#include <QDialogButtonBox>
 #include <QPainter>
 
 #include <QScrollBar>
@@ -1419,4 +1433,390 @@ void MainCanvas::resizeEvent(QResizeEvent* event) {
 
     }
 
+}
+// ==========================================
+// ۱. پاک‌سازی بوم قبل از لود پروژه جدید
+// ==========================================
+void MainCanvas::clearCanvas() {
+    stopSimulation();
+
+    // اگر سیمی در حال کشیده شدن بود آن را حذف کن
+    if (activeWire) {
+        scene->removeItem(activeWire);
+        delete activeWire;
+        activeWire = nullptr;
+    }
+
+    // پاک کردن تمام سیم‌ها
+    for (Wire* w : wires) {
+        scene->removeItem(w);
+        delete w;
+    }
+    wires.clear();
+
+    // پاک کردن تمام قطعات گرافیکی و اشیاء آن‌ها
+    QList<QGraphicsItem*> allItems = scene->items();
+    for (QGraphicsItem* item : allItems) {
+        QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+        if (compItem) {
+            scene->removeItem(compItem);
+            delete compItem->comp; // حذف ساختار منطقی
+            delete compItem;       // حذف المان گرافیکی
+        }
+    }
+
+    scene->clear();
+    scene->update();
+}
+
+// ==========================================
+// ۲. ذخیره‌سازی پروژه در قالب فایل JSON
+// ==========================================
+bool MainCanvas::saveToFile(const QString &filePath) {
+    QJsonObject rootObject;
+
+    // ذخیره ابعاد بوم
+    rootObject["canvasWidth"] = scene->sceneRect().width();
+    rootObject["canvasHeight"] = scene->sceneRect().height();
+
+    // ۱. ذخیره قطعات
+    QJsonArray componentsArray;
+    for (QGraphicsItem* item : scene->items()) {
+        QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
+        if (compItem && compItem->comp) {
+            Component* comp = compItem->comp;
+            QJsonObject compObj;
+            compObj["id"] = comp->getId();
+            compObj["type"] = comp->getName(); // یا نوع قطعه
+            compObj["x"] = comp->getPosition().x();
+            compObj["y"] = comp->getPosition().y();
+            compObj["rotation"] = comp->getRotationAngle();
+
+            componentsArray.append(compObj);
+        }
+    }
+    rootObject["components"] = componentsArray;
+
+    // ۲. ذخیره سیم‌ها و ارتباطات
+    QJsonArray wiresArray;
+    for (Wire* wire : wires) {
+        if (!wire || !wire->getStartPin() || !wire->getEndPin()) continue;
+
+        QJsonObject wireObj;
+        // ذخیره پین ابتدا
+        wireObj["startCompId"] = wire->getStartPin()->getParentComponent()->getId();
+        wireObj["startPinId"] = wire->getStartPin()->getId();
+
+        // ذخیره پین انتها
+        wireObj["endCompId"] = wire->getEndPin()->getParentComponent()->getId();
+        wireObj["endPinId"] = wire->getEndPin()->getId();
+
+        wiresArray.append(wireObj);
+    }
+    rootObject["wires"] = wiresArray;
+
+    // نوشتن روی فایل
+    QJsonDocument doc(rootObject);
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+    return true;
+}
+
+// ==========================================
+// ۳. بازگردانی پروژه از روی فایل JSON
+// ==========================================
+bool MainCanvas::loadFromFile(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return false;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) return false;
+
+    // بوم فعلی را پاک می‌کنیم
+    clearCanvas();
+
+QJsonObject rootObject = doc.object();
+    // ۱. بازسازی قطعات
+    QJsonArray componentsArray = rootObject["components"].toArray();
+    QMap<QString, Component*> createdComponents;
+
+    for (const QJsonValue &val : componentsArray) {
+        QJsonObject compObj = val.toObject();
+        QString id = compObj["id"].toString();
+        QString type = compObj["type"].toString();
+        double x = compObj["x"].toDouble();
+        double y = compObj["y"].toDouble();
+        int rotation = compObj["rotation"].toInt();
+
+        // ساخت قطعه از طریق ComponentLibrary
+        Component* comp = ComponentLibrary::getInstance().createComponent(type, id, QPointF(x, y));
+        if (comp) {
+            // اعمال زاویه چرخش
+            while (comp->getRotationAngle() != rotation) {
+                comp->rotateClockwise();
+            }
+
+            QGraphicsComponentItem* item = new QGraphicsComponentItem(comp);
+            scene->addItem(item);
+            createdComponents[id] = comp;
+        }
+    }
+
+    // تابع کمکی داخلی برای پیدا کردن پین با استفاده از ID قطعه و ID پین
+    auto findPin = [&createdComponents](const QString &compId, const QString &pinId) -> Pin* {
+        if (!createdComponents.contains(compId)) return nullptr;
+        Component* comp = createdComponents[compId];
+        for (Pin* p : comp->getPins()) {
+            if (p->getId() == pinId) return p;
+        }
+        return nullptr;
+    };
+
+    // ۲. بازسازی سیم‌ها
+    QJsonArray wiresArray = rootObject["wires"].toArray();
+    for (const QJsonValue &val : wiresArray) {
+        QJsonObject wireObj = val.toObject();
+        QString startCompId = wireObj["startCompId"].toString();
+        QString startPinId = wireObj["startPinId"].toString();
+        QString endCompId = wireObj["endCompId"].toString();
+        QString endPinId = wireObj["endPinId"].toString();
+
+        Pin* startPin = findPin(startCompId, startPinId);
+        Pin* endPin = findPin(endCompId, endPinId);
+
+        if (startPin && endPin) {
+            Wire* newWire = new Wire(startPin);
+            newWire->setEndPin(endPin);
+            scene->addItem(newWire);
+            wires.append(newWire);
+        }
+    }
+
+    scene->update();
+    return true;
+}
+void MainCanvas::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    // ۱. پیدا کردن قطعه کلیک‌شده روی بوم
+    QPointF scenePos = mapToScene(event->pos());
+    QGraphicsItem* clickedItem = scene->itemAt(scenePos, QTransform());
+
+    QGraphicsComponentItem* compItem = nullptr;
+    while (clickedItem) {
+        compItem = dynamic_cast<QGraphicsComponentItem*>(clickedItem);
+        if (compItem) break;
+        clickedItem = clickedItem->parentItem();
+    }
+
+    if (!compItem || !compItem->comp) {
+        QGraphicsView::mouseDoubleClickEvent(event);
+        return;
+    }
+
+    Component* selectedComp = compItem->comp;
+
+    // ۲. تشخیص خودکار و هوشمند یکا (SI Unit) بر اساس نوع قطعه
+    QString currentUnit = selectedComp->getUnit();
+    QString compName = selectedComp->getName().toLower();
+
+    if (currentUnit.isEmpty()) {
+        if (compName.contains("resistor") || compName.contains("مقاومت")) {
+            currentUnit = "Ω (اهم)";
+        } else if (compName.contains("capacitor") || compName.contains("خازن")) {
+            currentUnit = "F (فاراد)";
+        } else if (compName.contains("inductor") || compName.contains("سلف")) {
+            currentUnit = "H (هانری)";
+        } else if (compName.contains("voltage") || compName.contains("dc") || compName.contains("battery") || compName.contains("ولتاژ")) {
+            currentUnit = "V (ولت)";
+        } else if (compName.contains("current") || compName.contains("جریان")) {
+            currentUnit = "A (آمپر)";
+        } else if (compName.contains("clock") || compName.contains("pulse") || compName.contains("فرکانس")) {
+            currentUnit = "Hz (هرتز)";
+        } else if (compName.contains("and") || compName.contains("or") || compName.contains("not") || compName.contains("nand") || compName.contains("xor")) {
+            currentUnit = "ns (تأخیر)";
+        } else {
+            currentUnit = "—";
+        }
+        selectedComp->setUnit(currentUnit); // ثبت یکای جدید در شیء قطعه
+    }
+
+    // ۳. ساخت پنجره تنظیمات
+    QDialog dialog(this);
+    dialog.setWindowTitle("تنظیمات: " + selectedComp->getName());
+    dialog.setFixedWidth(390);
+    dialog.setWindowFlags(dialog.windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+    // ۴. استایل‌دهی مدرن با فلش‌های کاملاً واضح برای SpinBox
+    dialog.setStyleSheet(
+        "QDialog {"
+        "   background-color: #080e1c;"
+        "   color: #e2e8f0;"
+        "   font-family: 'Segoe UI', Arial, sans-serif;"
+        "}"
+        "QLabel {"
+        "   color: #94a3b8;"
+        "   font-size: 13px;"
+        "   font-weight: 500;"
+        "}"
+        "QLineEdit, QDoubleSpinBox {"
+        "   background-color: #0f172a;"
+        "   border: 1px solid rgba(0, 243, 255, 0.4);"
+        "   border-radius: 6px;"
+        "   color: #00f3ff;"
+        "   padding: 6px 8px;"
+        "   font-size: 13px;"
+        "   font-weight: bold;"
+        "}"
+        "QLineEdit:focus, QDoubleSpinBox:focus {"
+        "   border: 1px solid #00f3ff;"
+        "   background-color: #1e293b;"
+        "}"
+        /* --- اصلاح و نمایش واضح دکمه‌های بالا/پایین QDoubleSpinBox --- */
+        "QDoubleSpinBox::up-button {"
+        "   subcontrol-origin: border;"
+        "   subcontrol-position: top right;"
+        "   width: 22px;"
+        "   background-color: rgba(0, 243, 255, 0.15);"
+        "   border-top-right-radius: 5px;"
+        "   border-bottom: 1px solid #080e1c;"
+        "}"
+        "QDoubleSpinBox::down-button {"
+        "   subcontrol-origin: border;"
+        "   subcontrol-position: bottom right;"
+        "   width: 22px;"
+        "   background-color: rgba(0, 243, 255, 0.15);"
+        "   border-bottom-right-radius: 5px;"
+        "}"
+        "QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {"
+        "   background-color: #00f3ff;"
+        "}"
+        /* ساخت فلش‌های مثلثی با CSS جهت دیده‌شدن عالی */
+        "QDoubleSpinBox::up-arrow {"
+        "   width: 0; height: 0;"
+        "   border-left: 4px solid transparent;"
+        "   border-right: 4px solid transparent;"
+        "   border-bottom: 6px solid #00f3ff;"
+        "}"
+        "QDoubleSpinBox::down-arrow {"
+        "   width: 0; height: 0;"
+        "   border-left: 4px solid transparent;"
+        "   border-right: 4px solid transparent;"
+        "   border-top: 6px solid #00f3ff;"
+        "}"
+        "QDoubleSpinBox::up-arrow:hover {"
+        "   border-bottom-color: #080e1c;"
+        "}"
+        "QDoubleSpinBox::down-arrow:hover {"
+        "   border-top-color: #080e1c;"
+        "}"
+        /* ------------------------------------------------------------- */
+        "QPushButton {"
+        "   background-color: rgba(0, 243, 255, 0.1);"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.5);"
+        "   border-radius: 6px;"
+        "   padding: 7px 18px;"
+        "   font-weight: bold;"
+        "   font-size: 12px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: #00f3ff;"
+        "   color: #050b14;"
+        "}"
+        );
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(&dialog);
+    mainLayout->setContentsMargins(20, 20, 20, 20);
+    mainLayout->setSpacing(15);
+
+    // ۵. تیتر پنجره
+    QHBoxLayout* headerLayout = new QHBoxLayout();
+    QLabel* titleLabel = new QLabel("⚙️  تنظیمات " + selectedComp->getName(), &dialog);
+    titleLabel->setStyleSheet("color: #00f3ff; font-size: 15px; font-weight: bold;");
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addStretch();
+    mainLayout->addLayout(headerLayout);
+
+    QFrame* line = new QFrame(&dialog);
+    line->setFrameShape(QFrame::HLine);
+    line->setStyleSheet("color: rgba(0, 243, 255, 0.2);");
+    mainLayout->addWidget(line);
+
+    // ۶. فرم مشخصات
+    QFormLayout* formLayout = new QFormLayout();
+    formLayout->setSpacing(12);
+
+    // کادر ID
+    QLineEdit* editId = new QLineEdit(selectedComp->getId(), &dialog);
+    formLayout->addRow("شناسه / لیبل (ID):", editId);
+
+    // کادر Value و نمایش یکا
+    QHBoxLayout* valLayout = new QHBoxLayout();
+    QDoubleSpinBox* spinValue = new QDoubleSpinBox(&dialog);
+    spinValue->setRange(-1e9, 1e9);
+    spinValue->setDecimals(2);
+    spinValue->setValue(selectedComp->getValue());
+
+    QLabel* unitLabel = new QLabel(currentUnit, &dialog);
+    unitLabel->setStyleSheet("color: #39FF14; font-weight: bold; font-size: 13px; padding-left: 5px;");
+
+    valLayout->addWidget(spinValue, 1);
+    valLayout->addWidget(unitLabel);
+    formLayout->addRow("مقدار اصلی (Value):", valLayout);
+
+    mainLayout->addLayout(formLayout);
+
+    // ۷. کارت مشخصات فنی سیستم
+    QFrame* infoCard = new QFrame(&dialog);
+    infoCard->setStyleSheet(
+        "QFrame {"
+        "   background-color: rgba(15, 23, 42, 0.7);"
+        "   border: 1px solid rgba(255, 255, 255, 0.08);"
+        "   border-radius: 8px;"
+        "}"
+        );
+    QVBoxLayout* cardLayout = new QVBoxLayout(infoCard);
+    cardLayout->setContentsMargins(12, 10, 12, 10);
+
+    QLabel* cardTitle = new QLabel("ℹ️ اطلاعات قطعه", infoCard);
+    cardTitle->setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 11px;");
+    cardLayout->addWidget(cardTitle);
+
+    QLabel* cardText = new QLabel(infoCard);
+    cardText->setWordWrap(true);
+    cardText->setStyleSheet("color: #94a3b8; font-size: 11px; background: transparent;");
+    cardText->setText(QString("• دسته: %1\n• موقعیت روی بوم: X=%2 , Y=%3")
+                          .arg(selectedComp->getName())
+                          .arg((int)selectedComp->getPosition().x())
+                          .arg((int)selectedComp->getPosition().y()));
+    cardLayout->addWidget(cardText);
+
+    mainLayout->addWidget(infoCard);
+
+    // ۸. دکمه‌های تایید و انصراف
+    QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttonBox->button(QDialogButtonBox::Ok)->setText("ثبت تغییرات");
+    buttonBox->button(QDialogButtonBox::Cancel)->setText("انصراف");
+
+    mainLayout->addWidget(buttonBox);
+
+    connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    // ۹. اعمال تغییرات
+    if (dialog.exec() == QDialog::Accepted) {
+        selectedComp->setId(editId->text().trimmed());
+        selectedComp->setValue(spinValue->value());
+        scene->update(); // بروزرسانی بوم
+    }
 }

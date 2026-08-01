@@ -16,6 +16,10 @@
 
 #include <QPointF>
 
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QFile>
 #include <QString>
 
 #include <QRubberBand>
@@ -85,6 +89,9 @@ public:
     void stopSimulation();
 
     bool getIsSimulating() const { return isSimulating; }
+    bool saveToFile(const QString &filePath);
+    bool loadFromFile(const QString &filePath);
+    void clearCanvas();
 
 
 
@@ -99,7 +106,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
 
     void mouseMoveEvent(QMouseEvent* event) override;
-
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
     void resizeEvent(QResizeEvent* event) override;

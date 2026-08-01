@@ -14,9 +14,12 @@
 #include <QDir>
 #include <QSettings>
 #include <QFileInfo>
+#include <QTextBrowser>
+#include <QScrollBar>
 
 StartMenu::StartMenu(QWidget *parent)
     : QWidget(parent)
+    , statusBadge(nullptr)
     , currentTheme("Eclipse")
     , currentTrack("voss")
     , currentVolume(70)
@@ -29,24 +32,35 @@ StartMenu::~StartMenu() {}
 
 void StartMenu::setupUI()
 {
-    setMinimumSize(800, 600);
+    setMinimumSize(850, 620);
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(45, 30, 45, 30);
+    mainLayout->setContentsMargins(40, 25, 40, 25);
     mainLayout->setSpacing(20);
 
     // -----------------------------------------------------------------
-    // هدر بالا: عنوان + نشانگر وضعیت موتور + دکمه تنظیمات
+    // ۱. هدر بالا: عنوان + نشانگر وضعیت موتور + دکمه تنظیمات
     // -----------------------------------------------------------------
     QHBoxLayout *headerLayout = new QHBoxLayout();
 
     titleLabel = new QLabel("PROMETHEUS SIMULATOR", this);
     titleLabel->setStyleSheet(
-        "font-size: 30px;"
+        "font-size: 28px;"
         "font-weight: 900;"
         "color: #00f3ff;"
         "letter-spacing: 2px;"
         "background: transparent;"
+        );
+
+    statusBadge = new QLabel("● ENGINE ONLINE", this);
+    statusBadge->setStyleSheet(
+        "background: rgba(0, 243, 255, 0.1);"
+        "color: #00f3ff;"
+        "border: 1px solid rgba(0, 243, 255, 0.4);"
+        "border-radius: 12px;"
+        "padding: 4px 10px;"
+        "font-size: 11px;"
+        "font-weight: bold;"
         );
 
     settingsBtn = new QPushButton("⚙ Preferences", this);
@@ -77,7 +91,7 @@ void StartMenu::setupUI()
     mainLayout->addLayout(headerLayout);
 
     // -----------------------------------------------------------------
-    // کادر مرکزی دو ستونه (شروع سریع + پروژه‌های اخیر)
+    // ۲. کادر مرکزی دو ستونه (شروع سریع + پروژه‌های اخیر)
     // -----------------------------------------------------------------
     centerBox = new QWidget(this);
     centerBox->setObjectName("centerBox");
@@ -86,9 +100,9 @@ void StartMenu::setupUI()
     contentLayout->setContentsMargins(25, 25, 25, 25);
     contentLayout->setSpacing(30);
 
-    // ستون چپ: اکشن‌های اصلی
+    // ---------------- ستون چپ: اکشن‌های اصلی ----------------
     QVBoxLayout *leftLayout = new QVBoxLayout();
-    leftLayout->setSpacing(16);
+    leftLayout->setSpacing(14);
 
     QLabel *startTitle = new QLabel("🚀 Launch Action", centerBox);
     startTitle->setStyleSheet("font-size: 16px; font-weight: bold; color: #00f3ff; background: transparent;");
@@ -96,10 +110,10 @@ void StartMenu::setupUI()
 
     newProjectBtn = new QPushButton("Create New Project", centerBox);
     newProjectBtn->setCursor(Qt::PointingHandCursor);
-    newProjectBtn->setMinimumHeight(48);
+    newProjectBtn->setMinimumHeight(46);
     newProjectBtn->setStyleSheet(
         "QPushButton {"
-        "   background: linear-gradient(135deg, #0d6efd, #00d2ff);"
+        "   background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0d6efd, stop:1 #00d2ff);"
         "   color: white;"
         "   border: 1px solid #00f3ff;"
         "   border-radius: 10px;"
@@ -107,8 +121,8 @@ void StartMenu::setupUI()
         "   font-weight: bold;"
         "}"
         "QPushButton:hover {"
-        "   background: linear-gradient(135deg, #00d2ff, #00ff88);"
-        "   color: #0d6efd;"
+        "   background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #00d2ff, stop:1 #00ff88);"
+        "   color: #050b14;"
         "   border: 1px solid #00ff88;"
         "}"
         );
@@ -117,7 +131,7 @@ void StartMenu::setupUI()
 
     openProjectBtn = new QPushButton("Open Existing Project", centerBox);
     openProjectBtn->setCursor(Qt::PointingHandCursor);
-    openProjectBtn->setMinimumHeight(48);
+    openProjectBtn->setMinimumHeight(46);
     openProjectBtn->setStyleSheet(
         "QPushButton {"
         "   background: rgba(15, 23, 42, 180);"
@@ -136,15 +150,72 @@ void StartMenu::setupUI()
     connect(openProjectBtn, &QPushButton::clicked, this, &StartMenu::openProjectRequested);
     leftLayout->addWidget(openProjectBtn);
 
-    // راهنمای سریع کلیدهای میانبر
-    QLabel *shortcutInfo = new QLabel("💡 Quick Tips:\n• Make and Test!\n• Press 'ctrl+R' to Rotate Component\n• 'turn off your VPN to best performance'\n•'version 1.1' ", centerBox);
-    shortcutInfo->setStyleSheet("color: #94a3b8; font-size: 12px; line-height: 1.4; margin-top: 10px; background: transparent;");
-    leftLayout->addWidget(shortcutInfo);
+    // --- کادر راهنما و سازندگان (Help & Developers Side-by-Side) ---
+    QGroupBox *infoBox = new QGroupBox("Information & Assistance", centerBox);
+    infoBox->setStyleSheet(
+        "QGroupBox {"
+        "   background: rgba(5, 10, 20, 150);"
+        "   border: 1px solid rgba(0, 243, 255, 0.3);"
+        "   border-radius: 10px;"
+        "   color: #94a3b8;"
+        "   font-weight: bold;"
+        "   font-size: 12px;"
+        "   margin-top: 10px;"
+        "   padding-top: 15px;"
+        "}"
+        "QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }"
+        );
 
+    QHBoxLayout *infoLayout = new QHBoxLayout(infoBox);
+    infoLayout->setSpacing(10);
+    infoLayout->setContentsMargins(10, 12, 10, 12);
+
+    helpBtn = new QPushButton("❓ Help Guide", infoBox);
+    helpBtn->setCursor(Qt::PointingHandCursor);
+    helpBtn->setMinimumHeight(38);
+    helpBtn->setStyleSheet(
+        "QPushButton {"
+        "   background: rgba(0, 243, 255, 0.12);"
+        "   color: #00f3ff;"
+        "   border: 1px solid #00f3ff;"
+        "   border-radius: 8px;"
+        "   font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "   background: #00f3ff;"
+        "   color: #050b14;"
+        "}"
+        );
+    connect(helpBtn, &QPushButton::clicked, this, &StartMenu::openHelpDialog);
+
+    aboutUsBtn = new QPushButton("📖 Developers Info", infoBox);
+    aboutUsBtn->setCursor(Qt::PointingHandCursor);
+    aboutUsBtn->setMinimumHeight(38);
+    aboutUsBtn->setStyleSheet(
+        "QPushButton {"
+        "   background: rgba(255, 255, 255, 0.05);"
+        "   color: #e2e8f0;"
+        "   border: 1px solid rgba(255, 255, 255, 0.2);"
+        "   border-radius: 8px;"
+        "   font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+        "   background: rgba(255, 255, 255, 0.18);"
+        "   color: #ffffff;"
+        "   border-color: #ffffff;"
+        "}"
+        );
+    connect(aboutUsBtn, &QPushButton::clicked, this, &StartMenu::onAboutUsClicked);
+
+    infoLayout->addWidget(helpBtn);
+    infoLayout->addWidget(aboutUsBtn);
+
+    leftLayout->addWidget(infoBox);
     leftLayout->addStretch();
+
     contentLayout->addLayout(leftLayout, 1);
 
-    // ستون راست: پروژه‌های اخیر و فیلتر جستجو
+    // ---------------- ستون راست: پروژه‌های اخیر و فیلتر جستجو ----------------
     QVBoxLayout *rightLayout = new QVBoxLayout();
     rightLayout->setSpacing(10);
 
@@ -169,46 +240,118 @@ void StartMenu::setupUI()
     rightLayout->addWidget(searchEdit);
 
     recentProjectsList = new QListWidget(centerBox);
-    recentProjectsList->setMinimumHeight(200);
+    recentProjectsList->setFixedHeight(180);
     connect(recentProjectsList, &QListWidget::itemClicked, this, &StartMenu::onRecentItemClicked);
     rightLayout->addWidget(recentProjectsList);
+    rightLayout->addStretch();
 
     contentLayout->addLayout(rightLayout, 1);
     mainLayout->addWidget(centerBox);
-
-    // -----------------------------------------------------------------
-    // فوتر پایین: اطلاعات سازندگان
-    // -----------------------------------------------------------------
-    QHBoxLayout *footerLayout = new QHBoxLayout();
-
-    aboutUsBtn = new QPushButton("📖 Developers Info", this);
-    aboutUsBtn->setCursor(Qt::PointingHandCursor);
-    aboutUsBtn->setMinimumHeight(32);
-    aboutUsBtn->setStyleSheet(
-        "QPushButton {"
-        "   background: transparent;"
-        "   color: #94a3b8;"
-        "   border: none;"
-        "   font-size: 12px;"
-        "   font-weight: bold;"
-        "}"
-        "QPushButton:hover {"
-        "   color: #00f3ff;"
-        "   text-decoration: underline;"
-        "}"
-        );
-    connect(aboutUsBtn, &QPushButton::clicked, this, &StartMenu::onAboutUsClicked);
-
-    footerLayout->addWidget(aboutUsBtn);
-    footerLayout->addStretch();
-
-    mainLayout->addLayout(footerLayout);
 
     applyDarkTheme();
 }
 
 // ---------------------------------------------------------------------
-// پنجره یکپارچه تنظیمات (Preferences Modal)
+// ۳. پنجره اسکرول‌دار راهنمای کامل برنامه (Help Window)
+// ---------------------------------------------------------------------
+void StartMenu::openHelpDialog()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("📖 Prometheus Simulator - Help & User Guide");
+    dialog.resize(620, 520);
+    dialog.setStyleSheet(
+        "QDialog { background-color: #0b0f19; border: 1px solid #00f3ff; border-radius: 12px; }"
+        "QTextBrowser {"
+        "   background-color: #080e18;"
+        "   color: #e2e8f0;"
+        "   border: 1px solid rgba(0, 243, 255, 0.3);"
+        "   border-radius: 8px;"
+        "   padding: 12px;"
+        "   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"
+        "   font-size: 13px;"
+        "}"
+        "QScrollBar:vertical {"
+        "   border: none;"
+        "   background: #050a14;"
+        "   width: 10px;"
+        "   border-radius: 5px;"
+        "}"
+        "QScrollBar::handle:vertical {"
+        "   background: #00f3ff;"
+        "   min-height: 20px;"
+        "   border-radius: 5px;"
+        "}"
+        "QPushButton {"
+        "   background-color: #00f3ff;"
+        "   color: #0b0f19;"
+        "   font-weight: bold;"
+        "   border-radius: 6px;"
+        "   padding: 8px 24px;"
+        "}"
+        "QPushButton:hover { background-color: #00ff88; }"
+        );
+
+    QVBoxLayout layout(&dialog);
+    layout.setContentsMargins(20, 20, 20, 20);
+    layout.setSpacing(15);
+
+    QTextBrowser *helpView = new QTextBrowser(&dialog);
+    helpView->setOpenExternalLinks(true);
+
+    // محتوای راهنما با فرمت HTML و استایل‌دهی شیک
+    QString helpContent = R"(
+        <h2 style="color: #00f3ff; text-align: center; margin-bottom: 15px;">⚡ راهنمای جامع استفاده از شبیه‌ساز پرومتئوس</h2>
+        <hr style="border: 1px solid rgba(0, 243, 255, 0.3);" />
+
+        <h3 style="color: #00ff88;">⌨️ کلیدهای میانبر و کنترل‌های بوم (Canvas Controls)</h3>
+        <ul>
+            <li><b>چرخش قطعات:</b> برای چرخاندن قطعه انتخاب‌شده، کلید ترکیب <b>Ctrl + R</b> را فشار دهید.</li>
+            <li><b>بزرگ‌نمایی (Zoom):</b> با استفاده از <b>اسکرول ماوس (Mouse Wheel)</b> می‌توانید بوم را زوم کنید.</li>
+            <li><b>حذف المان‌ها:</b> قطعه یا سیم مورد نظر را انتخاب کرده و کلید <b>Delete</b> یا <b>Backspace</b> را بزنید.</li>
+            <li><b>جابجایی بوم:</b> کلید کلیک راست ماوس را نگه داشته و بوم را جابجا کنید.</li>
+        </ul>
+
+        <h3 style="color: #00ff88;">💾 ذخیره و بازکردن پروژه‌ها</h3>
+        <ul>
+            <li><b>ذخیره‌سازی (Save):</b> در نوار ابزار بالای بوم روی دکمه <b>Save</b> کلیک کنید. پروژه شما در قالب فایل استاندارد JSON ذخیره می‌شود.</li>
+            <li><b>باز کردن پروژه (Open):</b> از طریق دکمه <b>Open</b> یا لیست <b>Recent Projects</b> در استارت‌منو، فایل‌های قبلی را بارگذاری کنید.</li>
+        </ul>
+
+        <h3 style="color: #00ff88;">🧩 کاربرد انواع قطعات (Component Types)</h3>
+        <ul>
+            <li><b>Power Sources (منابع تغذیه):</b> شامل VCC (ولتاژ مثبت) و GND (زمین) برای تامین تغذیه مدار.</li>
+            <li><b>Logic Gates (گیت‌های منطقی):</b> گیت‌های اصلی مانند AND, OR, NOT, NAND, NOR, XOR برای طراحی مدارهای دیجیتال.</li>
+            <li><b>Passive Components (قطعات پسیو):</b> مقاومت (Resistor)، خازن (Capacitor) و سلف (Inductor).</li>
+            <li><b>Switches & Displays (کلیدها و نمایشگرها):</b> Push Button، کلیدهای حالت‌دار (Toggle Switch)، LED و 7-Segment.</li>
+            <li><b>Measurement Instruments (ابزار اندازه‌گیری):</b> ولتمتر (Voltmeter) و آمپرمتر (Ammeter) جهت مشاهده لحظه‌ای ولتاژ و جریان.</li>
+        </ul>
+
+        <h3 style="color: #00ff88;">🔌 نحوه سیم‌کشی و اتصال (Wiring)</h3>
+        <p style="line-height: 1.5;">
+            برای وصل کردن دو قطعه، کافی است روی <b>پین خروجی</b> قطعه اول کلیک کرده و سپس روی <b>پین ورودی</b> قطعه دوم کلیک کنید تا سیم بین آن‌ها برقرار شود.
+        </p>
+
+        <h3 style="color: #00ff88;">💡 نکات برای عملکرد بهتر</h3>
+        <ul>
+            <li>در صورت کندی شبیه‌سازی، فیلترشکن (VPN) خود را خاموش کنید.</li>
+            <li>پیش از ساخت پروژه جدید، اندازه صفحه (A4 یا A3) را متناسب با حجم مدار انتخاب کنید.</li>
+        </ul>
+        <br/>
+        <p style="text-align: center; color: #94a3b8; font-size: 11px;">PROMETHEUS SIMULATOR - Version 1.1</p>
+    )";
+
+    helpView->setHtml(helpContent);
+    layout.addWidget(helpView);
+
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok, &dialog);
+    connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    layout.addWidget(&buttonBox, 0, Qt::AlignCenter);
+
+    dialog.exec();
+}
+
+// ---------------------------------------------------------------------
+// ۴. پنجره یکپارچه تنظیمات (Preferences Modal)
 // ---------------------------------------------------------------------
 void StartMenu::openSettingsDialog()
 {
@@ -324,7 +467,7 @@ void StartMenu::loadRecentProjects()
     QSettings settings("PrometheusTeam", "PrometheusSimulator");
     QStringList recentFiles = settings.value("recentProjects").toStringList();
 
-    for (const QString &filePath : recentFiles) {
+    for (const QString &filePath : qAsConst(recentFiles)) {
         QFileInfo fileInfo(filePath);
         QListWidgetItem *item = new QListWidgetItem(fileInfo.fileName(), recentProjectsList);
         item->setData(Qt::UserRole, filePath);
