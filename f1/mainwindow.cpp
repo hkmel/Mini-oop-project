@@ -56,6 +56,7 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::createSimulationToolBar()
 {
+
     simToolBar = addToolBar(tr("Simulation & Tools Bar"));
     simToolBar->setMovable(false);
     simToolBar->setStyleSheet(
@@ -125,6 +126,49 @@ void MainWindow::createSimulationToolBar()
     connect(btnOpenProject, &QPushButton::clicked, this, &MainWindow::handleOpenProject);
     connect(btnSaveProject, &QPushButton::clicked, this, &MainWindow::onSaveProjectClicked);
     connect(btnToggleLibrary, &QPushButton::clicked, this, &MainWindow::onToggleLibraryClicked);
+    // ساخت اکشن ذخیره تصویر
+    // ۱. ساخت اکشن ذخیره تصویر
+    QAction* exportImageAction = new QAction("Save as Image", this);
+    exportImageAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+    exportImageAction->setToolTip("ذخیره مدار به صورت تصویر PNG یا JPG");
+
+    // ۲. اتصال signal/slot
+    connect(exportImageAction, &QAction::triggered, mainCanvas, &MainCanvas::exportToImage);
+
+    // ۳. اضافه کردن به نوار ابزار
+    simToolBar->addAction(exportImageAction);
+
+    // ۴. اعمال استایل اختصاصی مود پرومتیوس (آبی نئون + زمینه تیره + فونت روشن)
+    simToolBar->setStyleSheet(
+        "QToolBar {"
+        "   background-color: #080e1c;"
+        "   border: none;"
+        "   spacing: 6px;"
+        "}"
+        "QToolButton {"
+        "   background-color: rgba(0, 243, 255, 0.1);"
+        "   color: #00f3ff;"
+        "   border: 1px solid rgba(0, 243, 255, 0.4);"
+        "   border-radius: 6px;"
+        "   padding: 5px 12px;"
+        "   font-weight: bold;"
+        "   font-size: 11px;"
+        "}"
+        "QToolButton:hover {"
+        "   background-color: #00f3ff;"
+        "   color: #050b14;"
+        "   border: 1px solid #00f3ff;"
+        "}"
+        "QToolButton:pressed {"
+        "   background-color: #00b8c4;"
+        "   color: #000000;"
+        "}"
+        "QToolButton:disabled {"
+        "   color: #475569;"
+        "   border-color: #1e293b;"
+        "   background-color: rgba(255, 255, 255, 0.02);"
+        "}"
+        );
 
     simToolBar->hide();
 }

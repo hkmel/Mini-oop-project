@@ -5,7 +5,7 @@
 
 
 #include <QGraphicsView>
-
+#include <QUndoStack>
 #include <QGraphicsScene>
 
 #include <QWheelEvent>
@@ -87,11 +87,12 @@ public:
     void pauseSimulation();
 
     void stopSimulation();
-
+    void exportToImage();
     bool getIsSimulating() const { return isSimulating; }
     bool saveToFile(const QString &filePath);
     bool loadFromFile(const QString &filePath);
     void clearCanvas();
+    QUndoStack* getUndoStack() const { return undoStack; }
 
 
 
@@ -154,7 +155,7 @@ private:
     QVector<Wire*> wires;
 
     Wire* activeWire;
-
+    QUndoStack* undoStack = nullptr;
     Pin* hoveredPin;
 
     QTimer* simulationTimer;

@@ -39,7 +39,10 @@
 #include <QInputDialog>
 
 #include <QMessageBox>
-
+#include <QFileDialog>
+#include <QPixmap>
+#include <QPainter>
+#include <QMessageBox>
 #include <QHBoxLayout>
 
 #include <QVBoxLayout>
@@ -477,7 +480,7 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     lblTimerDisplay = nullptr;
 
 
-
+    undoStack = new QUndoStack(this);
     setRenderHint(QPainter::Antialiasing);
 
     setRenderHint(QPainter::SmoothPixmapTransform);
@@ -940,9 +943,6 @@ void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {
     QGraphicsView::mouseReleaseEvent(event);
 
 }
-
-
-
 void MainCanvas::keyPressEvent(QKeyEvent* event) {
 
     if (activeWire) {
@@ -956,21 +956,12 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
                 delete activeWire;
 
                 activeWire = nullptr;
-
             }
-
             scene->update();
-
             event->accept();
-
             return;
-
         }
-
     }
-
-
-
     if (event->key() == Qt::Key_Delete) {
 
         QList<QGraphicsItem*> selected = scene->selectedItems();
@@ -1038,9 +1029,6 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
         return;
 
     }
-
-
-
     if (event->key() == Qt::Key_R || ((event->modifiers() & Qt::ControlModifier) && event->key() == Qt::Key_R)) {
 
         bool rotatedAny = false;
@@ -1048,17 +1036,10 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
         for (QGraphicsItem* item : scene->selectedItems()) {
 
             QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
-
             if (compItem) {
-
                 compItem->comp->rotateClockwise();
-
                 compItem->update();
-
-
-
                 for (Wire* wire : wires) {
-
                     if (wire->getStartPin()->getParentComponent() == compItem->comp ||
 
                         (wire->getEndPin() && wire->getEndPin()->getParentComponent() == compItem->comp)) {
@@ -1068,51 +1049,27 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
                     }
 
                 }
-
                 rotatedAny = true;
-
             }
-
         }
-
         if (!rotatedAny) {
-
             resetTransform();
-
             currentZoom = 1.0;
-
             updateZoomValue();
-
         }
-
         event->accept();
-
         return;
-
     }
-
     if (event->key() == Qt::Key_F) {
-
         zoomToFit();
-
         event->accept();
-
         return;
-
     }
-
     QGraphicsView::keyPressEvent(event);
 
 }
-
-
-
 qreal MainCanvas::getZoomLevel() const { return currentZoom; }
-
 void MainCanvas::updateZoomValue() { emit zoomChanged(int(currentZoom * 100)); }
-
-
-
 void MainCanvas::setCurrentSelectedType(const QString& type) {
 
     activeComponentType = type;
@@ -1128,85 +1085,41 @@ void MainCanvas::setCurrentSelectedType(const QString& type) {
     }
 
 }
-
-
-
 void MainCanvas::zoomToFit() {
-
     QRectF rect = scene->itemsBoundingRect();
-
     if (rect.isEmpty()) rect = scene->sceneRect();
-
     rect.adjust(-50, -50, 50, 50);
-
     fitInView(rect, Qt::KeepAspectRatio);
-
     currentZoom = transform().m11();
-
     updateZoomValue();
-
 }
-
-
-
 void MainCanvas::startSimulation() {
-
     isSimulating = true;
-
     if (!simulationTimer->isActive()) {
-
         simulationTimer->start(80);
-
     }
 
     if (!clockTimer->isActive()) {
-
         clockTimer->start(100);
-
     }
-
 }
-
-
-
 void MainCanvas::pauseSimulation() {
-
     isSimulating = false;
-
     simulationTimer->stop();
-
     clockTimer->stop();
-
 }
-
-
-
 void MainCanvas::stopSimulation() {
-
     pauseSimulation();
-
     simElapsedTenths = 0;
-
     updateTimerLabel();
-
 }
-
-
-
 void MainCanvas::runSimulationStep() {
 
     if (!isSimulating) return;
-
-
-
     for (Wire* wire : wires) {
 
         wire->propagateSignal();
-
     }
-
-
-
     for (QGraphicsItem* item : scene->items()) {
 
         QGraphicsComponentItem* compItem = dynamic_cast<QGraphicsComponentItem*>(item);
@@ -1216,19 +1129,10 @@ void MainCanvas::runSimulationStep() {
             compItem->comp->updateState();
 
             compItem->update();
-
         }
-
     }
-
-
-
     scene->update();
-
 }
-
-
-
 void MainCanvas::updateClock() {
 
     if (isSimulating) {
@@ -1240,53 +1144,24 @@ void MainCanvas::updateClock() {
     }
 
 }
-
-
-
 void MainCanvas::updateTimerLabel() {
 
     if (!lblTimerDisplay) return;
-
-
-
     int totalSeconds = simElapsedTenths / 10;
-
     int tenths = simElapsedTenths % 10;
-
-
-
     int hours = totalSeconds / 3600;
-
     int minutes = (totalSeconds % 3600) / 60;
-
     int seconds = totalSeconds % 60;
-
-
-
     QString timeText = QString("%1:%2:%3.%4")
 
                            .arg(hours, 2, 10, QChar('0'))
-
                            .arg(minutes, 2, 10, QChar('0'))
-
                            .arg(seconds, 2, 10, QChar('0'))
-
                            .arg(tenths);
-
-
-
     lblTimerDisplay->setText(timeText);
-
 }
-
-
-
 void MainCanvas::createFloatingControlPanel() {
-
     floatingControlPanel = new QWidget(this);
-
-
-
     floatingControlPanel->setStyleSheet(
 
         "QWidget {"
@@ -1310,9 +1185,7 @@ void MainCanvas::createFloatingControlPanel() {
         "   border-radius: 5px;"
 
         "   padding: 5px 10px;"
-
         "   font-weight: bold;"
-
         "   font-size: 11px;"
 
         "}"
@@ -1322,85 +1195,38 @@ void MainCanvas::createFloatingControlPanel() {
         "   background-color: #334155;"
 
         "}"
-
         );
-
-
-
     QHBoxLayout* layout = new QHBoxLayout(floatingControlPanel);
-
     layout->setContentsMargins(8, 6, 8, 6);
-
     layout->setSpacing(8);
-
-
-
     lblSimStatus = new QLabel("STATUS: STOPPED", floatingControlPanel);
-
     lblSimStatus->setStyleSheet("color: #ff3366; font-weight: bold; border: none; font-size: 10px;");
-
-
-
     lblTimerDisplay = new QLabel("00:00:00.0", floatingControlPanel);
-
     lblTimerDisplay->setStyleSheet("color: #00d2ff; font-weight: bold; border: none; font-size: 11px; font-family: Consolas, monospace;");
-
-
-
     QPushButton* btnRun = new QPushButton("▶ RUN", floatingControlPanel);
-
     btnRun->setStyleSheet("QPushButton { color: #00ff88; } QPushButton:hover { background: #054422; }");
-
-
-
     QPushButton* btnPause = new QPushButton("⏸ PAUSE", floatingControlPanel);
-
     btnPause->setStyleSheet("QPushButton { color: #ffcc00; } QPushButton:hover { background: #443300; }");
-
-
-
     QPushButton* btnStop = new QPushButton("⏹ STOP", floatingControlPanel);
 
     btnStop->setStyleSheet("QPushButton { color: #ff3366; } QPushButton:hover { background: #440011; }");
-
-
-
     layout->addWidget(lblSimStatus);
-
     layout->addWidget(lblTimerDisplay);
-
     layout->addWidget(btnRun);
-
     layout->addWidget(btnPause);
-
     layout->addWidget(btnStop);
-
-
-
     connect(btnRun, &QPushButton::clicked, this, [this]() {
-
         startSimulation();
-
         lblSimStatus->setText("STATUS: RUNNING");
-
         lblSimStatus->setStyleSheet("color: #00ff88; font-weight: bold; border: none; font-size: 10px;");
 
     });
-
-
-
     connect(btnPause, &QPushButton::clicked, this, [this]() {
-
         pauseSimulation();
-
         lblSimStatus->setText("STATUS: PAUSED");
-
         lblSimStatus->setStyleSheet("color: #ffcc00; font-weight: bold; border: none; font-size: 10px;");
 
     });
-
-
-
     connect(btnStop, &QPushButton::clicked, this, [this]() {
 
         stopSimulation();
@@ -1410,15 +1236,9 @@ void MainCanvas::createFloatingControlPanel() {
         lblSimStatus->setStyleSheet("color: #ff3366; font-weight: bold; border: none; font-size: 10px;");
 
     });
-
-
-
     floatingControlPanel->adjustSize();
 
 }
-
-
-
 void MainCanvas::resizeEvent(QResizeEvent* event) {
 
     QGraphicsView::resizeEvent(event);
@@ -1521,12 +1341,10 @@ bool MainCanvas::saveToFile(const QString &filePath) {
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
-
     file.write(doc.toJson(QJsonDocument::Indented));
     file.close();
     return true;
 }
-
 // ==========================================
 // ۳. بازگردانی پروژه از روی فایل JSON
 // ==========================================
@@ -1818,5 +1636,39 @@ void MainCanvas::mouseDoubleClickEvent(QMouseEvent *event)
         selectedComp->setId(editId->text().trimmed());
         selectedComp->setValue(spinValue->value());
         scene->update(); // بروزرسانی بوم
+    }
+}
+void MainCanvas::exportToImage() {
+    // ۱. دریافت مسیر و فرمت ذخیره‌سازی از کاربر
+    QString filePath = QFileDialog::getSaveFileName(
+        this,
+        "ذخیره تصویر مدار",
+        "",
+        "PNG Image (*.png);;JPEG Image (*.jpg *.jpeg)"
+        );
+
+    if (filePath.isEmpty()) return;
+
+    // ۲. محاسبه محدوده کل آیتم‌های موجود روی بوم (با حاشیه مناسب)
+    QRectF bounds = scene->itemsBoundingRect();
+    if (bounds.isEmpty()) {
+        bounds = scene->sceneRect();
+    }
+    bounds.adjust(-20, -20, 20, 20); // ۲ اوت‌پت حاشیه برای زیبایی تصویر
+
+    // ۳. ساخت تصویر خروجی و رسم محتوای scene روی آن
+    QImage image(bounds.size().toSize(), QImage::Format_ARGB32);
+    image.fill(Qt::white); // پس‌زمینه سفید
+
+    QPainter painter(&image);
+    painter.setRenderHint(QPainter::Antialiasing);
+    scene->render(&painter, QRectF(), bounds);
+    painter.end();
+
+    // ۴. ذخیره فایل روی سیستم
+    if (image.save(filePath)) {
+        QMessageBox::information(this, "موفقیت", "تصویر مدار با موفقیت ذخیره شد.");
+    } else {
+        QMessageBox::critical(this, "خطا", "خطا در ذخیره‌سازی فایل تصویر!");
     }
 }
