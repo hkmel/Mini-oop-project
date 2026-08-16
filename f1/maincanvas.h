@@ -66,6 +66,10 @@ public:
 
     ~MainCanvas();
 
+    void zoomIn();
+    void zoomOut();
+    void toggleWireMode();
+
     void setCanvasSize(const QString& sizeStr);
 
     QPointF snapToGrid(const QPointF& pos);
@@ -131,6 +135,8 @@ private:
     bool isPanning;
 
     bool leftDragging;
+
+    bool isWireMode = false;
 
     QPoint lastMousePos;
 

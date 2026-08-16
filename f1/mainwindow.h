@@ -95,11 +95,16 @@ private:
     void initWorkspaceWidgets();
 
     void createSimulationToolBar();
+    void setupShortcuts();
 
     QPushButton* btnBackToStart;
     QPushButton* btnOpenProject;
     QPushButton* btnSaveProject;
     QPushButton* btnToggleLibrary;
+
+    QPushButton* btnZoomIn;
+    QPushButton* btnZoomOut;
+    QPushButton* btnZoomFit;
 
     QStackedWidget *stackedWidget;
 

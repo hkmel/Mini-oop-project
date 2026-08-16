@@ -6,6 +6,8 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFileDialog>
+#include <QShortcut>
+#include <QKeySequence>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), activeComponent(nullptr)
@@ -50,6 +52,7 @@ MainWindow::MainWindow(QWidget* parent)
     createSimulationToolBar();
 
     onMusicSelected("voss");
+    setupShortcuts();
 }
 
 MainWindow::~MainWindow() {}
@@ -120,6 +123,26 @@ void MainWindow::createSimulationToolBar()
     simToolBar->addWidget(btnSaveProject);
     simToolBar->addSeparator();
     simToolBar->addWidget(btnToggleLibrary);
+    simToolBar->addSeparator();
+
+    btnZoomIn = new QPushButton("🔍+", this);
+    btnZoomIn->setCursor(Qt::PointingHandCursor);
+    btnZoomIn->setToolTip("Zoom In");
+    btnZoomIn->setStyleSheet(btnToggleLibrary->styleSheet());
+
+    btnZoomOut = new QPushButton("🔍-", this);
+    btnZoomOut->setCursor(Qt::PointingHandCursor);
+    btnZoomOut->setToolTip("Zoom Out");
+    btnZoomOut->setStyleSheet(btnToggleLibrary->styleSheet());
+
+    btnZoomFit = new QPushButton("🔲 Fit", this);
+    btnZoomFit->setCursor(Qt::PointingHandCursor);
+    btnZoomFit->setToolTip("Zoom to Fit");
+    btnZoomFit->setStyleSheet(btnToggleLibrary->styleSheet());
+
+    simToolBar->addWidget(btnZoomIn);
+    simToolBar->addWidget(btnZoomOut);
+    simToolBar->addWidget(btnZoomFit);
 
     // اتصالات (Connections)
     connect(btnBackToStart, &QPushButton::clicked, this, &MainWindow::onBackToStartMenuClicked);
@@ -471,3 +494,25 @@ void MainWindow::onSaveProjectClicked()
         }
     }
 }
+void MainWindow::setupShortcuts()
+{
+    QShortcut *wireModeShortcut = new QShortcut(QKeySequence("Ctrl+W"), this);
+    connect(wireModeShortcut, &QShortcut::activated, mainCanvas, &MainCanvas::toggleWireMode);
+
+    QShortcut *zoomInReq = new QShortcut(QKeySequence("Ctrl+Z"), this);
+    QShortcut *zoomInStd = new QShortcut(QKeySequence("Ctrl++"), this);
+    QShortcut *zoomInStd2 = new QShortcut(QKeySequence("Ctrl+="), this);
+    connect(zoomInReq, &QShortcut::activated, mainCanvas, &MainCanvas::zoomIn);
+    connect(zoomInStd, &QShortcut::activated, mainCanvas, &MainCanvas::zoomIn);
+    connect(zoomInStd2, &QShortcut::activated, mainCanvas, &MainCanvas::zoomIn);
+
+    QShortcut *zoomOutStd = new QShortcut(QKeySequence("Ctrl+-"), this);
+    connect(zoomOutStd, &QShortcut::activated, mainCanvas, &MainCanvas::zoomOut);
+
+    QShortcut *zoomFitStd = new QShortcut(QKeySequence("Ctrl+F"), this);
+    connect(zoomFitStd, &QShortcut::activated, mainCanvas, &MainCanvas::zoomToFit);
+}
+
+
+QShortcut *zoomFitReq = new QShortcut(QKeySequence("Ctrl+R"), this);
+connect(zoomFitReq, &QShortcut::activated, mainCanvas, &MainCanvas::zoomToFit);

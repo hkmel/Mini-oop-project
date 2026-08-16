@@ -898,7 +898,7 @@ void MainCanvas::mouseReleaseEvent(QMouseEvent* event) {
 
         isPanning = false;
 
-        setCursor(Qt::ArrowCursor);
+        setCursor(isWireMode ? Qt::CrossCursor : Qt::ArrowCursor);
 
 
 
@@ -1670,5 +1670,32 @@ void MainCanvas::exportToImage() {
         QMessageBox::information(this, "موفقیت", "تصویر مدار با موفقیت ذخیره شد.");
     } else {
         QMessageBox::critical(this, "خطا", "خطا در ذخیره‌سازی فایل تصویر!");
+    }
+}
+
+void MainCanvas::zoomIn() {
+    double factor = 1.15;
+    if (currentZoom < 3) {
+        scale(factor, factor);
+        currentZoom *= factor;
+        updateZoomValue();
+    }
+}
+
+void MainCanvas::zoomOut() {
+    double factor = 1.15;
+    if (currentZoom > 0.3) {
+        scale(1 / factor, 1 / factor);
+        currentZoom /= factor;
+        updateZoomValue();
+    }
+}
+
+void MainCanvas::toggleWireMode() {
+    isWireMode = !isWireMode;
+    if (isWireMode) {
+        setCursor(Qt::CrossCursor);
+    } else {
+        setCursor(Qt::ArrowCursor);
     }
 }
