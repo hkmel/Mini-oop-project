@@ -13,6 +13,7 @@
 #include <QFileDialog>
 #include <QDir>
 #include <QSettings>
+#include <QGraphicsDropShadowEffect>
 #include <QFileInfo>
 #include <QTextBrowser>
 #include <QScrollBar>
@@ -466,7 +467,35 @@ void StartMenu::loadRecentProjects()
     recentProjectsList->clear();
     QSettings settings("PrometheusTeam", "PrometheusSimulator");
     QStringList recentFiles = settings.value("recentProjects").toStringList();
+    // در loadRecentProjects
+    for (const QString &filePath : qAsConst(recentFiles)) {
+        QFileInfo fileInfo(filePath);
+        if (!fileInfo.exists()) continue; // نادیده گرفتن فایل‌های حذف شده
 
+        QListWidgetItem *item = new QListWidgetItem(recentProjectsList);
+        item->setData(Qt::UserRole, filePath);
+        item->setSizeHint(QSize(0, 44)); // ارتفاع مناسب برای نمایش دو خط
+
+        // ساخت Widget اختصاصی برای هر آیتم لیست
+        QWidget *itemWidget = new QWidget();
+        QVBoxLayout *itemLayout = new QVBoxLayout(itemWidget);
+        itemLayout->setContentsMargins(8, 4, 8, 4);
+        itemLayout->setSpacing(2);
+
+        QLabel *nameLbl = new QLabel(fileInfo.fileName(), itemWidget);
+        nameLbl->setStyleSheet("color: #00f3ff; font-weight: bold; font-size: 13px;");
+
+        // تاریخ تغییر و مسیر فایل
+        QString lastModified = fileInfo.lastModified().toString("yyyy/MM/dd hh:mm");
+        QLabel *pathLbl = new QLabel(lastModified + "  •  " + fileInfo.absolutePath(), itemWidget);
+        pathLbl->setStyleSheet("color: #64748b; font-size: 10px;");
+
+        itemLayout->addWidget(nameLbl);
+        itemLayout->addWidget(pathLbl);
+
+        recentProjectsList->addItem(item);
+        recentProjectsList->setItemWidget(item, itemWidget);
+    }
     for (const QString &filePath : qAsConst(recentFiles)) {
         QFileInfo fileInfo(filePath);
         QListWidgetItem *item = new QListWidgetItem(fileInfo.fileName(), recentProjectsList);

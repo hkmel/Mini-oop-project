@@ -1,9 +1,14 @@
+
 #include "mainwindow.h"
 #include "componentlibrary.h"
 #include "component.h"
 #include <QMessageBox>
 #include <QStatusBar>
 #include <QVBoxLayout>
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QGraphicsDropShadowEffect>
+#include <QSequentialAnimationGroup>
 #include <QHBoxLayout>
 #include <QFileDialog>
 #include <QShortcut>
@@ -59,17 +64,8 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::createSimulationToolBar()
 {
-
     simToolBar = addToolBar(tr("Simulation & Tools Bar"));
     simToolBar->setMovable(false);
-    simToolBar->setStyleSheet(
-        "QToolBar {"
-        "   background: rgba(8, 14, 28, 240);"
-        "   border-bottom: 1px solid rgba(0, 243, 255, 0.4);"
-        "   spacing: 8px;"
-        "   padding: 6px 12px;"
-        "}"
-        );
 
     // ۱. مدیریت پروژه و ناوبری
     btnBackToStart = new QPushButton("🏠 Start Menu", this);
@@ -116,15 +112,6 @@ void MainWindow::createSimulationToolBar()
         "}"
         );
 
-    // افزودن المان‌های باقی‌مانده به نوار ابزار
-    simToolBar->addWidget(btnBackToStart);
-    simToolBar->addSeparator();
-    simToolBar->addWidget(btnOpenProject);
-    simToolBar->addWidget(btnSaveProject);
-    simToolBar->addSeparator();
-    simToolBar->addWidget(btnToggleLibrary);
-    simToolBar->addSeparator();
-
     btnZoomIn = new QPushButton("🔍+", this);
     btnZoomIn->setCursor(Qt::PointingHandCursor);
     btnZoomIn->setToolTip("Zoom In");
@@ -140,9 +127,46 @@ void MainWindow::createSimulationToolBar()
     btnZoomFit->setToolTip("Zoom to Fit");
     btnZoomFit->setStyleSheet(btnToggleLibrary->styleSheet());
 
+    // ساخت دکمه قلب
+    btnFavorite = new QPushButton("🤍", this);
+    btnFavorite->setCursor(Qt::PointingHandCursor);
+    btnFavorite->setToolTip("افزودن به مدارهای مورد علاقه");
+    btnFavorite->setStyleSheet(
+        "QPushButton {"
+        "   background-color: rgba(255, 0, 100, 0.1);"
+        "   color: #ff007f;"
+        "   border: 1px solid rgba(255, 0, 100, 0.4);"
+        "   border-radius: 6px;"
+        "   font-size: 14px;"
+        "   padding: 5px 12px;"
+        "}"
+        "QPushButton:hover {"
+        "   background-color: rgba(255, 0, 127, 0.3);"
+        "   border-color: #ff007f;"
+        "}"
+        );
+
+    // ساخت اکشن ذخیره تصویر
+    QAction* exportImageAction = new QAction("Save as Image", this);
+    exportImageAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+    exportImageAction->setToolTip("ذخیره مدار به صورت تصویر PNG یا JPG");
+
+    // افزودن المان‌ها به ترتیب صحیح به نوار ابزار
+    simToolBar->addWidget(btnBackToStart);
+    simToolBar->addSeparator();
+    simToolBar->addWidget(btnOpenProject);
+    simToolBar->addWidget(btnSaveProject);
+    simToolBar->addSeparator();
+    simToolBar->addWidget(btnToggleLibrary);
+    simToolBar->addSeparator();
     simToolBar->addWidget(btnZoomIn);
     simToolBar->addWidget(btnZoomOut);
     simToolBar->addWidget(btnZoomFit);
+    simToolBar->addSeparator();
+
+    // اضافه کردن Save as Image و بلافاصله دکمه قلب در سمت راست آن
+    simToolBar->addAction(exportImageAction);
+    simToolBar->addWidget(btnFavorite);
 
     // اتصالات (Connections)
     connect(btnBackToStart, &QPushButton::clicked, this, &MainWindow::onBackToStartMenuClicked);
@@ -153,19 +177,11 @@ void MainWindow::createSimulationToolBar()
     connect(btnZoomIn, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomIn);
     connect(btnZoomOut, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomOut);
     connect(btnZoomFit, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomToFit);
-    // ساخت اکشن ذخیره تصویر
-    // ۱. ساخت اکشن ذخیره تصویر
-    QAction* exportImageAction = new QAction("Save as Image", this);
-    exportImageAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
-    exportImageAction->setToolTip("ذخیره مدار به صورت تصویر PNG یا JPG");
 
-    // ۲. اتصال signal/slot
     connect(exportImageAction, &QAction::triggered, mainCanvas, &MainCanvas::exportToImage);
+    connect(btnFavorite, &QPushButton::clicked, this, &MainWindow::onFavoriteClicked);
 
-    // ۳. اضافه کردن به نوار ابزار
-    simToolBar->addAction(exportImageAction);
-
-    // ۴. اعمال استایل اختصاصی مود پرومتیوس (آبی نئون + زمینه تیره + فونت روشن)
+    // اعمال استایل اختصاصی مود پرومتیوس
     simToolBar->setStyleSheet(
         "QToolBar {"
         "   background-color: #080e1c;"
@@ -213,31 +229,122 @@ void MainWindow::onBackToStartMenuClicked()
 void MainWindow::initWorkspaceWidgets()
 {
     // ---------------------------------------------------------------------
-    // ۱. ساخت و تنظیمات کامل Dock Widget کتابخانه قطعات (بدون تغییر)
+    // ۱. ساخت و تنظیمات کامل Dock Widget کتابخانه قطعات با تم پرومتیوس
     // ---------------------------------------------------------------------
-    libraryDock = new QDockWidget(tr("component liberary"), this);
+    libraryDock = new QDockWidget(tr("Component Library"), this);
     libraryDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
+    // استایل‌دهی قاب اصلی Dock Widget (عنوان و کادر دور)
+    libraryDock->setStyleSheet(
+        "QDockWidget {"
+        "    color: #00f3ff;"
+        "    font-weight: bold;"
+        "    font-size: 13px;"
+        "    titlebar-close-icon: url(close.png);"
+        "    titlebar-normal-icon: url(undock.png);"
+        "}"
+        "QDockWidget::title {"
+        "    background-color: #080e1c;"
+        "    text-align: left;"
+        "    padding-left: 8px;"
+        "    padding-top: 4px;"
+        "    padding-bottom: 4px;"
+        "    border-bottom: 1px solid #00f3ff;"
+        "}"
+        );
+
     QWidget* dockContents = new QWidget(libraryDock);
+    dockContents->setStyleSheet("background-color: #050b14;"); // پس‌زمینه تیره و یکدست پنل
     QVBoxLayout* layout = new QVBoxLayout(dockContents);
 
+    // ۱-۱. باکس جستجو (QLineEdit)
     searchEdit = new QLineEdit(dockContents);
-    searchEdit->setPlaceholderText(tr("Search the component..."));
+    searchEdit->setPlaceholderText(tr("Search component..."));
+    searchEdit->setStyleSheet(
+        "QLineEdit {"
+        "    background-color: #0d1527;"
+        "    color: #e2e8f0;"
+        "    border: 1px solid rgba(0, 243, 255, 0.4);"
+        "    border-radius: 5px;"
+        "    padding: 6px 10px;"
+        "    font-size: 12px;"
+        "}"
+        "QLineEdit:focus {"
+        "    border: 1px solid #00f3ff;"
+        "    background-color: #111a2e;"
+        "}"
+        );
     layout->addWidget(searchEdit);
     connect(searchEdit, &QLineEdit::textChanged, this, &MainWindow::filterLibrary);
 
+    // ۱-۲. درخت قطعات (QTreeWidget)
     libraryTree = new QTreeWidget(dockContents);
-    libraryTree->setHeaderLabel(tr("Sort the component"));
+    libraryTree->setHeaderLabel(tr("Categories"));
+    libraryTree->setStyleSheet(
+        "QTreeWidget {"
+        "    background-color: #080e1c;"
+        "    color: #cbd5e1;"
+        "    border: 1px solid #1e293b;"
+        "    border-radius: 5px;"
+        "    font-size: 12px;"
+        "}"
+        "QTreeWidget::header {"
+        "    background-color: #0d1a30;"
+        "    color: #00f3ff;"
+        "    border-bottom: 1px solid #00f3ff;"
+        "    font-weight: bold;"
+        "    padding: 4px;"
+        "}"
+        "QTreeWidget::item {"
+        "    padding: 4px;"
+        "}"
+        "QTreeWidget::item:hover {"
+        "    background-color: rgba(0, 243, 255, 0.15);"
+        "    color: #00f3ff;"
+        "}"
+        "QTreeWidget::item:selected {"
+        "    background-color: #00f3ff;"
+        "    color: #050b14;"
+        "    font-weight: bold;"
+        "}"
+        );
     layout->addWidget(libraryTree);
     connect(libraryTree, &QTreeWidget::itemClicked, this, &MainWindow::onTreeItemClicked);
 
+    // ۱-۳. نگهدارنده پیش‌نمایش
     previewWidgetPlaceholder = new QWidget(dockContents);
     previewWidgetPlaceholder->setMinimumSize(150, 20);
     layout->addWidget(previewWidgetPlaceholder);
 
+    // ۱-۴. دکمه‌های افزودن و حذف (QPushButton)
     QHBoxLayout* btnLayout = new QHBoxLayout();
-    btnAddActive = new QPushButton(tr("<<Add to Activ"), dockContents);
-    btnRemoveActive = new QPushButton(tr("Delete  >>"), dockContents);
+    btnAddActive = new QPushButton(tr("<< Add to Active"), dockContents);
+    btnRemoveActive = new QPushButton(tr("Remove >>"), dockContents);
+
+    QString buttonStyle =
+        "QPushButton {"
+        "    background-color: rgba(0, 243, 255, 0.1);"
+        "    color: #00f3ff;"
+        "    border: 1px solid rgba(0, 243, 255, 0.4);"
+        "    border-radius: 5px;"
+        "    padding: 6px 10px;"
+        "    font-weight: bold;"
+        "    font-size: 11px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #00f3ff;"
+        "    color: #050b14;"
+        "}"
+        "QPushButton:pressed {"
+        "    background-color: #00b8c4;"
+        "    color: #000000;"
+        "}";
+
+    btnAddActive->setStyleSheet(buttonStyle);
+    btnRemoveActive->setStyleSheet(buttonStyle);
+    btnAddActive->setCursor(Qt::PointingHandCursor);
+    btnRemoveActive->setCursor(Qt::PointingHandCursor);
+
     btnLayout->addWidget(btnAddActive);
     btnLayout->addWidget(btnRemoveActive);
     layout->addLayout(btnLayout);
@@ -245,8 +352,34 @@ void MainWindow::initWorkspaceWidgets()
     connect(btnAddActive, &QPushButton::clicked, this, &MainWindow::onAddActiveClicked);
     connect(btnRemoveActive, &QPushButton::clicked, this, &MainWindow::onRemoveActiveClicked);
 
+    // ۱-۵. لیست قطعات فعال (QListWidget)
+    QLabel* activeListLabel = new QLabel(tr("Active Devices:"), dockContents);
+    activeListLabel->setStyleSheet("color: #38bdf8; font-weight: bold; font-size: 12px; margin-top: 4px;");
+    layout->addWidget(activeListLabel);
+
     activeList = new QListWidget(dockContents);
-    layout->addWidget(new QLabel(tr(" (Devices):"), dockContents));
+    activeList->setStyleSheet(
+        "QListWidget {"
+        "    background-color: #080e1c;"
+        "    color: #e2e8f0;"
+        "    border: 1px solid #1e293b;"
+        "    border-radius: 5px;"
+        "    font-size: 12px;"
+        "}"
+        "QListWidget::item {"
+        "    padding: 5px;"
+        "    border-bottom: 1px solid #0d1527;"
+        "}"
+        "QListWidget::item:hover {"
+        "    background-color: rgba(0, 243, 255, 0.1);"
+        "    color: #00f3ff;"
+        "}"
+        "QListWidget::item:selected {"
+        "    background-color: #00f3ff;"
+        "    color: #050b14;"
+        "    font-weight: bold;"
+        "}"
+        );
     layout->addWidget(activeList);
     connect(activeList, &QListWidget::itemClicked, this, &MainWindow::onActiveListClicked);
 
@@ -257,26 +390,23 @@ void MainWindow::initWorkspaceWidgets()
     libraryDock->hide();
 
     // ---------------------------------------------------------------------
-    // ۲. تغییرات جدید: استایل‌دهی نوار وضعیت (QStatusBar) به سبک پروتئوس
+    // ۲. استایل‌دهی نوار وضعیت (QStatusBar)
     // ---------------------------------------------------------------------
-
-    // استایل تیره زمینه QStatusBar
     statusBar()->setStyleSheet(
         "QStatusBar {"
         "    background-color: #0b0e14;"
-        "    border-top: 1px solid #003300;"
+        "    border-top: 1px solid #00aa00;"
         "}"
         "QStatusBar::item {"
         "    border: none;"
         "}"
         );
 
-    // استایل سبز فسفری نئون برای باکس‌های مختصات و زوم
     QString statusLabelStyle =
         "QLabel {"
-        "    color: #39FF14;"                     /* سبز فسفری نئون */
-        "    background-color: #041204;"          /* پس‌زمینه تیره */
-        "    border: 1px solid #00aa00;"          /* کادر دور سبز */
+        "    color: #39FF14;"
+        "    background-color: #041204;"
+        "    border: 1px solid #00aa00;"
         "    border-radius: 4px;"
         "    padding: 3px 10px;"
         "    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;"
@@ -284,24 +414,20 @@ void MainWindow::initWorkspaceWidgets()
         "    font-size: 12px;"
         "}";
 
-    // ساخت لیبل مختصات با فرمت جدید پروتئوس
     coordLabel = new QLabel("X: +0   Y: +0", this);
     coordLabel->setStyleSheet(statusLabelStyle);
 
-    // ساخت لیبل زوم با فرمت پروتئوس
     zoomLabel = new QLabel("Zoom: 100%", this);
     zoomLabel->setStyleSheet(statusLabelStyle);
 
-    // نمایش لیبل‌ها
     coordLabel->show();
     zoomLabel->show();
 
-    // افزودن به سمت راست نوار وضعیت
     statusBar()->addPermanentWidget(coordLabel);
     statusBar()->addPermanentWidget(zoomLabel);
 
     // ---------------------------------------------------------------------
-    // ۳. بارگذاری اولیه لیست کتابخانه (بدون تغییر)
+    // ۳. بارگذاری اولیه لیست کتابخانه
     // ---------------------------------------------------------------------
     filterLibrary("");
 }
@@ -516,4 +642,101 @@ void MainWindow::setupShortcuts()
     QShortcut *zoomFitStd = new QShortcut(QKeySequence("Ctrl+F"), this);
     connect(zoomFitStd, &QShortcut::activated, mainCanvas, &MainCanvas::zoomToFit);
 }
+void MainWindow::onFavoriteClicked()
+{
+    // ۱. انیمیشن تپش (Heartbeat Effect) برای دکمه
+    QGraphicsOpacityEffect *btnEffect = new QGraphicsOpacityEffect(btnFavorite);
+    btnFavorite->setGraphicsEffect(btnEffect);
 
+    QSequentialAnimationGroup *heartPulse = new QSequentialAnimationGroup(btnFavorite);
+
+    QPropertyAnimation *anim1 = new QPropertyAnimation(btnEffect, "opacity");
+    anim1->setDuration(120);
+    anim1->setStartValue(1.0);
+    anim1->setEndValue(0.3);
+
+    QPropertyAnimation *anim2 = new QPropertyAnimation(btnEffect, "opacity");
+    anim2->setDuration(120);
+    anim2->setStartValue(0.3);
+    anim2->setEndValue(1.0);
+
+    heartPulse->addAnimation(anim1);
+    heartPulse->addAnimation(anim2);
+    heartPulse->start(QAbstractAnimation::DeleteWhenStopped);
+
+    // ۲. تغییر حالت دکمه و نمایش پیام Toast
+    if (btnFavorite->text() == "🤍") {
+        btnFavorite->setText("❤️");
+        btnFavorite->setStyleSheet(
+            "QPushButton {"
+            "   background-color: #ff0055;"
+            "   color: #ffffff;"
+            "   border: 1px solid #ff0055;"
+            "   border-radius: 6px;"
+            "   font-size: 14px;"
+            "   padding: 5px 12px;"
+            "}"
+            );
+        showToastNotification("✨ این مدار به لیست مدارهای مورد علاقه‌ات اضافه شد!");
+    } else {
+        btnFavorite->setText("🤍");
+        btnFavorite->setStyleSheet(
+            "QPushButton {"
+            "   background-color: rgba(255, 0, 100, 0.1);"
+            "   color: #ff007f;"
+            "   border: 1px solid rgba(255, 0, 100, 0.4);"
+            "   border-radius: 6px;"
+            "   font-size: 14px;"
+            "   padding: 5px 12px;"
+            "}"
+            );
+        showToastNotification("💔 مدار از لیست مورد علاقه‌ها حذف شد.");
+    }
+}
+
+void MainWindow::showToastNotification(const QString &message)
+{
+    // ساخت بنر اعلان با استایل نئون مدرن
+    QLabel *toast = new QLabel(message, this);
+    toast->setStyleSheet(
+        "QLabel {"
+        "   background-color: rgba(8, 14, 28, 230);"
+        "   color: #00f3ff;"
+        "   border: 1px solid #00f3ff;"
+        "   border-radius: 10px;"
+        "   padding: 8px 18px;"
+        "   font-weight: bold;"
+        "   font-size: 13px;"
+        "   font-family: 'Segoe UI', sans-serif;"
+        "}"
+        );
+
+    // افزودن افکت درخشش نئون
+    QGraphicsDropShadowEffect *glow = new QGraphicsDropShadowEffect(toast);
+    glow->setBlurRadius(20);
+    glow->setColor(QColor(0, 243, 255, 160));
+    glow->setOffset(0, 0);
+    toast->setGraphicsEffect(glow);
+
+    toast->adjustSize();
+
+    // قرارگیری پیام در بالا و وسط کانواس
+    int x = (width() - toast->width()) / 2;
+    int y = 75;
+    toast->move(x, y);
+    toast->show();
+
+    // انیمیشن محو شدن نرم (Fade Out)
+    QGraphicsOpacityEffect *fadeEffect = new QGraphicsOpacityEffect(toast);
+    toast->setGraphicsEffect(fadeEffect);
+
+    QPropertyAnimation *fadeAnim = new QPropertyAnimation(fadeEffect, "opacity");
+    fadeAnim->setDuration(2200);
+    fadeAnim->setStartValue(1.0);
+    fadeAnim->setKeyValueAt(0.7, 1.0); // ۷۰٪ زمان کاملاً واضح می‌ماند
+    fadeAnim->setEndValue(0.0);
+
+    // پاکسازی خودکار حافظه پس از اتمام انیمیشن
+    connect(fadeAnim, &QPropertyAnimation::finished, toast, &QLabel::deleteLater);
+    fadeAnim->start(QAbstractAnimation::DeleteWhenStopped);
+}

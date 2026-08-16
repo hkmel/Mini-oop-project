@@ -66,7 +66,7 @@ private slots:
     void filterLibrary(const QString& text);
     void handleNewProject(const QString &pageSize, const QString &projectName, const QString &savePath);
     void onTreeItemClicked(QTreeWidgetItem* item, int col);
-
+void onFavoriteClicked();
     void onAddActiveClicked();
 
     void onRemoveActiveClicked();
@@ -96,7 +96,7 @@ private:
 
     void createSimulationToolBar();
     void setupShortcuts();
-
+void showToastNotification(const QString &message);
     QPushButton* btnBackToStart;
     QPushButton* btnOpenProject;
     QPushButton* btnSaveProject;
@@ -105,6 +105,7 @@ private:
     QPushButton* btnZoomIn;
     QPushButton* btnZoomOut;
     QPushButton* btnZoomFit;
+    QPushButton* btnFavorite;
 
     QStackedWidget *stackedWidget;
 
