@@ -149,6 +149,10 @@ void MainWindow::createSimulationToolBar()
     connect(btnOpenProject, &QPushButton::clicked, this, &MainWindow::handleOpenProject);
     connect(btnSaveProject, &QPushButton::clicked, this, &MainWindow::onSaveProjectClicked);
     connect(btnToggleLibrary, &QPushButton::clicked, this, &MainWindow::onToggleLibraryClicked);
+
+    connect(btnZoomIn, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomIn);
+    connect(btnZoomOut, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomOut);
+    connect(btnZoomFit, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomToFit);
     // ساخت اکشن ذخیره تصویر
     // ۱. ساخت اکشن ذخیره تصویر
     QAction* exportImageAction = new QAction("Save as Image", this);
@@ -513,6 +517,3 @@ void MainWindow::setupShortcuts()
     connect(zoomFitStd, &QShortcut::activated, mainCanvas, &MainCanvas::zoomToFit);
 }
 
-
-QShortcut *zoomFitReq = new QShortcut(QKeySequence("Ctrl+R"), this);
-connect(zoomFitReq, &QShortcut::activated, mainCanvas, &MainCanvas::zoomToFit);
