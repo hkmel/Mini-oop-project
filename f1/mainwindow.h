@@ -107,6 +107,9 @@ void showToastNotification(const QString &message);
     QPushButton* btnZoomFit;
     QPushButton* btnFavorite;
 
+    QPushButton* btnUndo;
+    QPushButton* btnRedo;
+
     QStackedWidget *stackedWidget;
 
     StartMenu *startMenu;

@@ -59,6 +59,8 @@
 
 #include <QResizeEvent>
 
+#include <QDir>
+
 
 
 // کلاس فرعی برای نمایش گرافیکی قطعات روی بوم
@@ -124,213 +126,165 @@ public:
 
 
         if (name == "Resistor") {
-
-            painter->drawLine(-30, 0, -15, 0);
-
-            painter->drawRect(-15, -7, 30, 14);
-
-            painter->drawLine(15, 0, 30, 0);
-
+            painter->drawLine(-30, 0, -10, 0);
+            painter->drawRect(-10, -5, 20, 10);
+            painter->drawLine(10, 0, 30, 0);
         } else if (name == "Capacitor") {
-
-            painter->drawLine(-30, 0, -6, 0);
-
-            painter->drawLine(-6, -15, -6, 15);
-
-            painter->drawLine(6, -15, 6, 15);
-
-            painter->drawLine(6, 0, 30, 0);
-
+            painter->drawLine(-30, 0, -4, 0);
+            painter->drawLine(-4, -12, -4, 12);
+            painter->drawLine(4, -12, 4, 12);
+            painter->drawLine(4, 0, 30, 0);
         } else if (name == "Inductor") {
-
-            painter->drawLine(-30, 0, -20, 0);
-
-            painter->drawArc(-20, -8, 10, 16, 0, 180 * 16);
-
-            painter->drawArc(-10, -8, 10, 16, 0, 180 * 16);
-
-            painter->drawArc(0, -8, 10, 16, 0, 180 * 16);
-
-            painter->drawArc(10, -8, 10, 16, 0, 180 * 16);
-
-            painter->drawLine(20, 0, 30, 0);
-
+            painter->drawLine(-30, 0, -15, 0);
+            painter->drawArc(-15, -6, 10, 12, 0, 180 * 16);
+            painter->drawArc(-5, -6, 10, 12, 0, 180 * 16);
+            painter->drawArc(5, -6, 10, 12, 0, 180 * 16);
+            painter->drawLine(15, 0, 30, 0);
         } else if (name == "GND") {
-
-            painter->drawLine(0, -10, 0, 10);
-
-            painter->drawLine(-15, 10, 15, 10);
-
-            painter->drawLine(-10, 15, 10, 15);
-
-            painter->drawLine(-5, 20, 5, 20);
-
+            painter->drawLine(0, -10, 0, 5);
+            painter->drawLine(-12, 5, 12, 5);
+            painter->drawLine(-8, 10, 8, 10);
+            painter->drawLine(-4, 15, 4, 15);
         } else if (name == "VoltageSource") {
-
-            painter->drawEllipse(-15, -15, 30, 30);
-
-            painter->drawLine(0, -20, 0, -15);
-
-            painter->drawLine(0, 15, 0, 20);
-
-            painter->drawText(QRectF(-15, -12, 30, 12), Qt::AlignCenter, "+");
-
-            painter->drawText(QRectF(-15, 0, 30, 12), Qt::AlignCenter, "-");
-
+            painter->drawEllipse(-12, -12, 24, 24);
+            painter->drawLine(0, -20, 0, -12);
+            painter->drawLine(0, 12, 0, 20);
+            painter->drawText(QRectF(-12, -10, 24, 12), Qt::AlignCenter, "+");
+            painter->drawText(QRectF(-12, 0, 24, 12), Qt::AlignCenter, "-");
         } else if (name == "Switch") {
-
-            painter->drawLine(-30, 0, -15, 0);
-
-            painter->drawEllipse(-15, -2, 4, 4);
-
-            painter->drawEllipse(11, -2, 4, 4);
-
+            painter->drawLine(-30, 0, -10, 0);
+            painter->drawEllipse(-10, -2, 4, 4);
+            painter->drawEllipse(6, -2, 4, 4);
             SwitchComponent* sw = dynamic_cast<SwitchComponent*>(comp);
-
-            if (sw && sw->isOpen()) painter->drawLine(-13, 0, 10, -12);
-
-            else painter->drawLine(-13, 0, 11, 0);
-
-            painter->drawLine(15, 0, 30, 0);
-
+            if (sw && sw->isOpen()) painter->drawLine(-8, 0, 5, -10);
+            else painter->drawLine(-8, 0, 6, 0);
+            painter->drawLine(10, 0, 30, 0);
         } else if (name == "Button") {
-
-            painter->drawLine(-30, 0, -15, 0);
-
-            painter->drawEllipse(-15, -2, 4, 4);
-
-            painter->drawEllipse(11, -2, 4, 4);
-
+            painter->drawLine(-30, 0, -10, 0);
+            painter->drawEllipse(-10, -2, 4, 4);
+            painter->drawEllipse(6, -2, 4, 4);
             ButtonComponent* btn = dynamic_cast<ButtonComponent*>(comp);
-
-            if (btn && btn->isPressed()) painter->drawLine(-13, 0, 11, 0);
-
-            else painter->drawLine(-13, -6, 11, -6);
-
+            if (btn && btn->isPressed()) painter->drawLine(-8, 0, 6, 0);
+            else painter->drawLine(-8, -6, 6, -6);
             painter->drawLine(-1, -6, -1, -12);
-
-            painter->drawLine(-8, -12, 6, -12);
-
-            painter->drawLine(15, 0, 30, 0);
-
+            painter->drawLine(-6, -12, 4, -12);
+            painter->drawLine(10, 0, 30, 0);
         } else if (name == "AND") {
-
-            painter->drawLine(-30, -10, -15, -10);
-
-            painter->drawLine(-30, 10, -15, 10);
-
+            painter->drawLine(-30, -10, -10, -10);
+            painter->drawLine(-30, 10, -10, 10);
             QPainterPath path;
-
-            path.moveTo(-15, -20);
-
-            path.lineTo(0, -20);
-
-            path.arcTo(-15, -20, 40, 40, 90, -180);
-
-            path.lineTo(-15, 20);
-
+            path.moveTo(-10, -15);
+            path.lineTo(0, -15);
+            path.arcTo(-15, -15, 30, 30, 90, -180);
+            path.lineTo(-10, 15);
             path.closeSubpath();
-
             painter->drawPath(path);
-
-            painter->drawLine(25, 0, 30, 0);
-
-        } else if (name == "VoltageProbe") {
-
-            VoltageProbe* probe = dynamic_cast<VoltageProbe*>(comp);
-
-            double v = probe ? probe->getMeasuredVoltage() : 0.0;
-
-            PinState st = probe ? probe->getMeasuredState() : PinState::Floating;
-
-
-
-            painter->setPen(QPen(QColor(0, 255, 136), 1.5));
-
-            painter->setBrush(QBrush(QColor(15, 23, 36, 230)));
-
-            painter->drawRoundedRect(-35, -20, 70, 40, 6, 6);
-
-
-
-            painter->setPen(QPen(Qt::white, 2));
-
-            painter->drawLine(-35, 0, -25, 0);
-
-
-
-            QFont font("Consolas", 10, QFont::Bold);
-
-            painter->setFont(font);
-
-
-
-            if (st == PinState::High) {
-
-                painter->setPen(QColor(255, 45, 85));
-
-                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
-
-                painter->setFont(QFont("Segoe UI", 7));
-
-                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ HIGH ]");
-
-            } else if (st == PinState::Low) {
-
-                painter->setPen(QColor(0, 210, 255));
-
-                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
-
-                painter->setFont(QFont("Segoe UI", 7));
-
-                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ LOW ]");
-
-            } else {
-
-                painter->setPen(QColor(241, 196, 15));
-
-                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, "?.? V");
-
-                painter->setFont(QFont("Segoe UI", 7));
-
-                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ FLOAT ]");
-
-            }
-
+            painter->drawLine(15, 0, 30, 0);
         } else if (name == "OR") {
-
-            // ... کد مشابه
-
+            painter->drawLine(-30, -10, -10, -10);
+            painter->drawLine(-30, 10, -10, 10);
+            QPainterPath path;
+            path.moveTo(-10, -15);
+            path.quadTo(0, -15, 10, 0);
+            path.quadTo(0, 15, -10, 15);
+            path.quadTo(-5, 0, -10, -15);
+            painter->drawPath(path);
+            painter->drawLine(10, 0, 30, 0);
         } else if (name == "NOT") {
-
-            // ... کد مشابه
-
+            painter->drawLine(-30, 0, -10, 0);
+            QPolygon polygon;
+            polygon << QPoint(-10, -10) << QPoint(-10, 10) << QPoint(4, 0);
+            painter->drawPolygon(polygon);
+            painter->drawEllipse(4, -3, 6, 6);
+            painter->drawLine(10, 0, 30, 0);
         } else if (name == "NAND") {
-
-            // ... کد مشابه
-
+            painter->drawLine(-30, -10, -8, -10);
+            painter->drawLine(-30, 10, -8, 10);
+            QPainterPath path;
+            path.moveTo(-8, -10);
+            path.lineTo(0, -10);
+            path.arcTo(-10, -10, 20, 20, 90, -180);
+            path.lineTo(-8, 10);
+            path.closeSubpath();
+            painter->drawPath(path);
+            painter->drawEllipse(10, -3, 6, 6);
+            painter->drawLine(16, 0, 30, 0);
         } else if (name == "XOR") {
-
-            // ... کد مشابه
-
+            painter->drawLine(-30, -10, -12, -10);
+            painter->drawLine(-30, 10, -12, 10);
+            QPainterPath backCurve;
+            backCurve.moveTo(-14, -15);
+            backCurve.quadTo(-8, 0, -14, 15);
+            painter->drawPath(backCurve);
+            QPainterPath path;
+            path.moveTo(-10, -15);
+            path.quadTo(0, -15, 10, 0);
+            path.quadTo(0, 15, -10, 15);
+            path.quadTo(-4, 0, -10, -15);
+            painter->drawPath(path);
+            painter->drawLine(10, 0, 30, 0);
         } else if (name == "D Flip-Flop") {
-
-            // ... کد مشابه
-
+            painter->drawRect(-12, -18, 24, 36);
+            painter->drawLine(-30, -10, -12, -10);
+            painter->drawLine(-30, 10, -12, 10);
+            painter->drawLine(12, -10, 30, -10);
+            painter->drawLine(12, 10, 30, 10);
+            painter->drawLine(-12, 6, -8, 10);
+            painter->drawLine(-8, 10, -12, 14);
         } else if (name == "LED") {
-
-            // ... کد مشابه
-
+            painter->drawLine(-30, 0, -8, 0);
+            QPolygon poly;
+            poly << QPoint(-8, -8) << QPoint(-8, 8) << QPoint(6, 0);
+            painter->drawPolygon(poly);
+            painter->drawLine(6, -8, 6, 8);
+            painter->drawLine(6, 0, 30, 0);
+            painter->drawLine(0, -10, 8, -18);
+            painter->drawLine(8, -18, 4, -18);
+            painter->drawLine(8, -18, 8, -14);
+            painter->drawLine(6, -4, 14, -12);
+            painter->drawLine(14, -12, 10, -12);
+            painter->drawLine(14, -12, 14, -8);
         } else if (name == "7-Segment") {
-
-            // ... کد مشابه
-
+            painter->drawRect(-12, -26, 24, 52);
+            painter->setPen(QPen(QColor(255, 60, 60, 100), 3, Qt::SolidLine, Qt::RoundCap));
+            painter->drawLine(-6, -18, 6, -18);
+            painter->drawLine(8, -16, 8, -2);
+            painter->drawLine(8, 2, 8, 16);
+            painter->drawLine(-6, 18, 6, 18);
+            painter->drawLine(-8, 2, -8, 16);
+            painter->drawLine(-8, -16, -8, -2);
+            painter->drawLine(-6, 0, 6, 0);
+            painter->drawPoint(10, 20);
+        } else if (name == "VoltageProbe") {
+            VoltageProbe* probe = dynamic_cast<VoltageProbe*>(comp);
+            double v = probe ? probe->getMeasuredVoltage() : 0.0;
+            PinState st = probe ? probe->getMeasuredState() : PinState::Floating;
+            painter->setPen(QPen(QColor(0, 255, 136), 1.5));
+            painter->setBrush(QBrush(QColor(15, 23, 36, 230)));
+            painter->drawRoundedRect(-35, -20, 70, 40, 6, 6);
+            painter->setPen(QPen(Qt::white, 2));
+            painter->drawLine(-35, 0, -25, 0);
+            QFont font("Consolas", 10, QFont::Bold);
+            painter->setFont(font);
+            if (st == PinState::High) {
+                painter->setPen(QColor(255, 45, 85));
+                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
+                painter->setFont(QFont("Segoe UI", 7));
+                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ HIGH ]");
+            } else if (st == PinState::Low) {
+                painter->setPen(QColor(0, 210, 255));
+                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, QString::number(v, 'f', 1) + " V");
+                painter->setFont(QFont("Segoe UI", 7));
+                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ LOW ]");
+            } else {
+                painter->setPen(QColor(241, 196, 15));
+                painter->drawText(QRectF(-35, -18, 70, 20), Qt::AlignCenter, "?.? V");
+                painter->setFont(QFont("Segoe UI", 7));
+                painter->drawText(QRectF(-35, 2, 70, 15), Qt::AlignCenter, "[ FLOAT ]");
+            }
         } else {
-
             painter->drawRect(-30, -30, 60, 60);
-
             painter->drawText(QRectF(-30, -25, 60, 20), Qt::AlignCenter, comp->getName());
-
         }
 
         painter->restore();
@@ -548,6 +502,10 @@ MainCanvas::MainCanvas(QWidget* parent) : QGraphicsView(parent) {
     createFloatingControlPanel();
     updateZoomValue();
 
+    current_circuit = 0;
+    max_circuit = 0;
+    saveToFile(QString("circuit_temp_%1.json").arg(current_circuit));
+
 }
 
 
@@ -597,6 +555,7 @@ void MainCanvas::addComponent(const QString& type, const QPointF& pos) {
         scene->addItem(item);
 
         emit componentPlaced();
+        saveStateForUndo();
 
     }
 
@@ -795,6 +754,7 @@ void MainCanvas::mousePressEvent(QMouseEvent* event) {
                     wires.append(activeWire);
 
                     activeWire = nullptr;
+                    saveStateForUndo();
 
                 }
 
@@ -1021,6 +981,7 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
             }
 
         }
+        saveStateForUndo();
 
         scene->update();
 
@@ -1050,6 +1011,7 @@ void MainCanvas::keyPressEvent(QKeyEvent* event) {
 
                 }
                 rotatedAny = true;
+                saveStateForUndo();
             }
         }
         if (!rotatedAny) {
@@ -1636,6 +1598,7 @@ void MainCanvas::mouseDoubleClickEvent(QMouseEvent *event)
         selectedComp->setId(editId->text().trimmed());
         selectedComp->setValue(spinValue->value());
         scene->update(); // بروزرسانی بوم
+        saveStateForUndo();
     }
 }
 void MainCanvas::exportToImage() {
@@ -1697,5 +1660,28 @@ void MainCanvas::toggleWireMode() {
         setCursor(Qt::CrossCursor);
     } else {
         setCursor(Qt::ArrowCursor);
+    }
+}
+
+void MainCanvas::saveStateForUndo() {
+    current_circuit += 1;
+    max_circuit = current_circuit;
+    QString filename = QString("circuit_temp_%1.json").arg(current_circuit);
+    saveToFile(filename);
+}
+
+void MainCanvas::undo() {
+    if (current_circuit > 0) {
+        current_circuit -= 1;
+        QString filename = QString("circuit_temp_%1.json").arg(current_circuit);
+        loadFromFile(filename);
+    }
+}
+
+void MainCanvas::redo() {
+    if (current_circuit < max_circuit) {
+        current_circuit += 1;
+        QString filename = QString("circuit_temp_%1.json").arg(current_circuit);
+        loadFromFile(filename);
     }
 }

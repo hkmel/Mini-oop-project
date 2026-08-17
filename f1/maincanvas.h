@@ -98,6 +98,10 @@ public:
     void clearCanvas();
     QUndoStack* getUndoStack() const { return undoStack; }
 
+    void saveStateForUndo();
+    void undo();
+    void redo();
+
 
 
 protected:
@@ -173,6 +177,9 @@ private:
     bool isSimulating;
 
     void updateZoomValue();
+
+    int current_circuit;
+    int max_circuit;
 
 };
 

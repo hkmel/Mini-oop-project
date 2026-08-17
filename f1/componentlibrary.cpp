@@ -22,7 +22,7 @@ ComponentLibrary::ComponentLibrary() {
 
     libraryData["Digital"] = QStringList() << "AND" << "OR" << "NOT" << "NAND" << "XOR" << "D Flip-Flop";
 
-    libraryData["Sources"] = QStringList() << "GND" << "VoltageSource";
+    libraryData["Sources"] = QStringList() << "GND" << "VoltageSource" << "Battery" << "Clock Generator";
 
 }
 
@@ -53,6 +53,10 @@ Component* ComponentLibrary::createComponent(const QString& type, const QString&
     if (type == "GND") return new GndComponent(id, pos);
 
     if (type == "VoltageSource") return new VoltageSourceComponent(id, pos, 5.0);
+
+    if (type == "Battery") return new BatteryComponent(id, pos, 9.0);
+
+    if (type == "Clock Generator") return new ClockGeneratorComponent(id, pos, 1.0);
 
     if (type == "Resistor") return new ResistorComponent(id, pos, 1000.0);
 

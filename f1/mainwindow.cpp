@@ -93,6 +93,16 @@ void MainWindow::createSimulationToolBar()
     btnSaveProject->setCursor(Qt::PointingHandCursor);
     btnSaveProject->setStyleSheet(btnBackToStart->styleSheet());
 
+    btnUndo = new QPushButton("↩️ Undo", this);
+    btnUndo->setCursor(Qt::PointingHandCursor);
+    btnUndo->setStyleSheet(btnBackToStart->styleSheet());
+    btnUndo->setToolTip("Undo (Ctrl+Z)");
+
+    btnRedo = new QPushButton("↪️ Redo", this);
+    btnRedo->setCursor(Qt::PointingHandCursor);
+    btnRedo->setStyleSheet(btnBackToStart->styleSheet());
+    btnRedo->setToolTip("Redo (Ctrl+Y)");
+
     // ۲. کنترل نمایش پنل کتابخانه
     btnToggleLibrary = new QPushButton("📚 Library Panel", this);
     btnToggleLibrary->setCursor(Qt::PointingHandCursor);
@@ -156,6 +166,8 @@ void MainWindow::createSimulationToolBar()
     simToolBar->addSeparator();
     simToolBar->addWidget(btnOpenProject);
     simToolBar->addWidget(btnSaveProject);
+    simToolBar->addWidget(btnUndo);
+    simToolBar->addWidget(btnRedo);
     simToolBar->addSeparator();
     simToolBar->addWidget(btnToggleLibrary);
     simToolBar->addSeparator();
@@ -172,6 +184,8 @@ void MainWindow::createSimulationToolBar()
     connect(btnBackToStart, &QPushButton::clicked, this, &MainWindow::onBackToStartMenuClicked);
     connect(btnOpenProject, &QPushButton::clicked, this, &MainWindow::handleOpenProject);
     connect(btnSaveProject, &QPushButton::clicked, this, &MainWindow::onSaveProjectClicked);
+    connect(btnUndo, &QPushButton::clicked, mainCanvas, &MainCanvas::undo);
+    connect(btnRedo, &QPushButton::clicked, mainCanvas, &MainCanvas::redo);
     connect(btnToggleLibrary, &QPushButton::clicked, this, &MainWindow::onToggleLibraryClicked);
 
     connect(btnZoomIn, &QPushButton::clicked, mainCanvas, &MainCanvas::zoomIn);
@@ -629,7 +643,16 @@ void MainWindow::setupShortcuts()
     QShortcut *wireModeShortcut = new QShortcut(QKeySequence("Ctrl+W"), this);
     connect(wireModeShortcut, &QShortcut::activated, mainCanvas, &MainCanvas::toggleWireMode);
 
-    QShortcut *zoomInReq = new QShortcut(QKeySequence("Ctrl+Z"), this);
+    QShortcut *undoShortcut = new QShortcut(QKeySequence("Ctrl+Z"), this);
+    connect(undoShortcut, &QShortcut::activated, mainCanvas, &MainCanvas::undo);
+
+    QShortcut *redoShortcut1 = new QShortcut(QKeySequence("Ctrl+Y"), this);
+    connect(redoShortcut1, &QShortcut::activated, mainCanvas, &MainCanvas::redo);
+
+    QShortcut *redoShortcut2 = new QShortcut(QKeySequence("Ctrl+Shift+Z"), this);
+    connect(redoShortcut2, &QShortcut::activated, mainCanvas, &MainCanvas::redo);
+
+    QShortcut *zoomInReq = new QShortcut(QKeySequence("Ctrl+I"), this);
     QShortcut *zoomInStd = new QShortcut(QKeySequence("Ctrl++"), this);
     QShortcut *zoomInStd2 = new QShortcut(QKeySequence("Ctrl+="), this);
     connect(zoomInReq, &QShortcut::activated, mainCanvas, &MainCanvas::zoomIn);

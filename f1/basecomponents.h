@@ -223,4 +223,30 @@ private:
 
 };
 
+class BatteryComponent : public Component {
+public:
+    BatteryComponent(const QString& id, const QPointF& pos, double voltage = 9.0, double internalRes = 0.1);
+
+    double getInternalResistance() const;
+    void setInternalResistance(double r);
+
+    void updateState() override;
+
+private:
+    double internalResistance;
+};
+
+class ClockGeneratorComponent : public Component {
+public:
+    ClockGeneratorComponent(const QString& id, const QPointF& pos, double frequency = 1.0);
+
+    bool getCurrentState() const;
+    void toggleState();
+
+    void updateState() override;
+
+private:
+    bool logicState;
+};
+
 #endif

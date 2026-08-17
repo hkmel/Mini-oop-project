@@ -126,3 +126,35 @@ SevenSegmentComponent::SevenSegmentComponent(const QString&id,const QPointF&pos)
 }
 void SevenSegmentComponent::updateState(){}
 int SevenSegmentComponent::getDisplayedDigit()const{return digit;}
+
+
+BatteryComponent::BatteryComponent(const QString& id, const QPointF& pos, double voltage, double internalRes)
+    : Component(id, "Battery", pos, voltage, "V") {
+    this->internalResistance = internalRes;
+
+
+    addPin(new Pin("+", QPointF(0, -20), this, PinDirection::Output));
+    addPin(new Pin("-", QPointF(0, 20), this, PinDirection::Output));
+}
+
+double BatteryComponent::getInternalResistance() const { return internalResistance; }
+void BatteryComponent::setInternalResistance(double r) { internalResistance = r; }
+void BatteryComponent::updateState() {}
+
+ClockGeneratorComponent::ClockGeneratorComponent(const QString& id, const QPointF& pos, double frequency)
+    : Component(id, "Clock Generator", pos, frequency, "Hz") {
+    this->logicState = false;
+
+
+    addPin(new Pin("OUT", QPointF(20, 0), this, PinDirection::Output));
+}
+
+bool ClockGeneratorComponent::getCurrentState() const { return logicState; }
+
+void ClockGeneratorComponent::toggleState() {
+    logicState = !logicState;
+
+    setPinStateById("OUT", logicState ? PinState::High : PinState::Low);
+}
+
+void ClockGeneratorComponent::updateState() {}
