@@ -111,7 +111,7 @@ void Wire::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
     } else if (state == PinState::Low) {
         pen = QPen(QColor(0, 210, 255), 2.5); // آبی نئونی برای ۰ ولت (LOW)
     } else {
-        pen = QPen(QColor(120, 120, 120), 2, Qt::DashLine); // خاکستری دش‌پوینت برای Floating
+        pen = QPen(QColor(10, 225, 200), 2, Qt::DashLine); // خاکستری دش‌پوینت برای Floating
     }
 
     if (isHovered || isSelected()) {
