@@ -72,26 +72,20 @@ public:
     Component* comp;
 
     QGraphicsComponentItem(Component* c) {
-
         comp = c;
-
         setFlag(QGraphicsItem::ItemIsMovable);
-
         setFlag(QGraphicsItem::ItemIsSelectable);
-
         setFlag(QGraphicsItem::ItemSendsGeometryChanges);
-
         setPos(c->getPosition());
 
+        // 🌟 ۱. فعال‌سازی رویدادهای حرکت موس روی این قطعه
+        setAcceptHoverEvents(true);
     }
-
-
 
     QRectF boundingRect() const override {
-
         return QRectF(-45, -45, 90, 90);
-
     }
+
 
 
 
@@ -388,7 +382,43 @@ protected:
         return QGraphicsItem::itemChange(change, value);
 
     }
+    void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override {
+        QPointF mousePos = event->pos(); // موقعیت موس نسبت به مرکز همین قطعه
+        bool pinHovered = false;
 
+        // زاویه چرخش قطعه
+        int angle = comp->getRotationAngle();
+
+        for (Pin* pin : comp->getPins()) {
+            QPointF p = pin->getOffset();
+            double rx = p.x();
+            double ry = p.y();
+
+            // اعمال چرخش روی مختصات offset پین
+            if (angle == 90) { rx = -p.y(); ry = p.x(); }
+            else if (angle == 180) { rx = -p.x(); ry = -p.y(); }
+            else if (angle == 270) { rx = p.y(); ry = -p.x(); }
+            QPointF pinPos(rx, ry);
+
+            // محاسبه فاصله موس تا پین (مثلاً ۱۰ پیکسل برای تشخیص شعاع نزدیک شدن)
+            qreal distance = QLineF(mousePos, pinPos).length();
+
+            if (distance <= 10.0) { // اگر موس کمتر از ۱۰ پیکسل با پین فاصله داشت
+                pinHovered = true;
+                break;
+            }
+        }
+
+        // درخواست رسم مجدد قطعه برای به‌روزرسانی رنگ پین در paint()
+        update();
+
+        QGraphicsItem::hoverMoveEvent(event);
+    }
+
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override {
+        update(); // بازگرداندن رنگ به حالت عادی هنگام خروج موس از محدوده قطعه
+        QGraphicsItem::hoverLeaveEvent(event);
+    }
 
 
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override {
